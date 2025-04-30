@@ -1,0 +1,27 @@
+.bettergi_init_completed
+.idea/
+server/.venv/
+website/output/
+website/node_modules/
+# next.js
+website/.next/
+website/out/
+
+# production
+website/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
