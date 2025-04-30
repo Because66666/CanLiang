@@ -12,6 +12,10 @@
 - 提供REST API接口进行日志分析
 - 通过Web界面直观展示分析结果
 
+### 界面截图
+
+<img src="https://github.com/user-attachments/assets/359bafa5-ba27-4c4c-8ed2-fddc56ffcac6" alt="示例图片" width="50%">
+
 ## 系统要求
 
 - Python 3.6+
@@ -22,6 +26,12 @@
 
 ### 首次运行
 
+只需运行项目根目录下的`run.py`脚本：
+
+```bash
+python run.py
+```
+
 首次运行时，脚本会自动执行以下操作：
 
 1. 检测BetterGI安装路径
@@ -30,11 +40,7 @@
 4. 安装并构建前端环境
 5. 启动后端和前端服务
 
-只需运行项目根目录下的`run.py`脚本：
 
-```bash
-python run.py
-```
 
 ### 后续运行
 
