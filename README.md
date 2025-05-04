@@ -14,7 +14,7 @@
 
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/f0faf0bb-8b73-4db4-b106-9cb12dc0443c" alt="示例图片" width="50%">
+<img src="https://github.com/user-attachments/assets/f0faf0bb-8b73-4db4-b106-9cb12dc0443c" alt="示例图片" width="100%">
 
 ## 系统要求
 
