@@ -14,7 +14,7 @@
 
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/359bafa5-ba27-4c4c-8ed2-fddc56ffcac6" alt="示例图片" width="50%">
+<img src="https://github.com/user-attachments/assets/f0faf0bb-8b73-4db4-b106-9cb12dc0443c" alt="示例图片" width="50%">
 
 ## 系统要求
 
@@ -112,4 +112,4 @@ GET /api/analyse?date=YYYYMMDD
 
 ## 许可证
 
-本项目遵循MIT许可证。
+本项目遵循Apache-2.0 License许可证。
