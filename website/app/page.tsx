@@ -386,15 +386,9 @@ const chartVariants = {
   const maxCount = top10Items[0][1]
   return (
     <div className="container mx-auto px-4 py-8 bg-white">
-      <motion.h1
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 text-3xl font-bold text-center"
-        style={{ color: colors.secondary }}
-      >
+      <h1 className="mb-8 text-3xl font-bold text-center" style={{ color: colors.secondary }}>
         参量质变仪
-      </motion.h1>
+      </h1>
 
       {/* 统计卡片 */}
       <motion.div
@@ -570,13 +564,8 @@ const chartVariants = {
         {/* 右侧物品列表 */}
         <div className="w-full lg:w-2/3">
           {/* 搜索和日期选择区域 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 p-6 rounded-lg"
-            style={{ backgroundColor: colors.light }}
-          >
+          <div className="mb-8 p-6 rounded-lg" style={{ backgroundColor: colors.light }}>
+
             {/* 搜索 */}
             <div className="mb-6 flex flex-col items-center gap-4">
               <div className="relative w-full max-w-md">
@@ -621,7 +610,7 @@ const chartVariants = {
                 </SelectContent>
               </Select>
             </div>
-          </motion.div>
+          </div>
 
           {/* 物品列表 */}
           <Tabs defaultValue="all" className="flex flex-col items-center">
