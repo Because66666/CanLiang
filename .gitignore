@@ -1,6 +1,7 @@
 .bettergi_init_completed
 .idea/
 server/.venv/
+mini/.venv/
 website/output/
 website/node_modules/
 # next.js
