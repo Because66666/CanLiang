@@ -1,9 +1,6 @@
 import type React from "react"
 import "@/app/globals.css"
-import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "参量质变仪",
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className={`${inter.className} bg-white text-black`}>
+      <body className="bg-white text-black">
         <ThemeProvider attribute="class" enableSystem={false} disableTransitionOnChange>
           {children}
         </ThemeProvider>
