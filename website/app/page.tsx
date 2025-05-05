@@ -93,7 +93,7 @@ export default function InventoryPage() {
     const fetchDateList = async () => {
       try {
         setLoading(true)
-        const response = await fetch('http://127.0.0.1:5000/api/LogList')
+        const response = await fetch('/api/LogList')
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
@@ -134,7 +134,7 @@ export default function InventoryPage() {
       
       try {
         setLoading(true)
-        const response = await fetch(`http://127.0.0.1:5000/api/analyse?date=${selectedDate}`)
+        const response = await fetch(`/api/analyse?date=${selectedDate}`)
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)

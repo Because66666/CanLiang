@@ -10,6 +10,7 @@ const nextConfig = {
     unoptimized: true,
   },
   distDir: 'output',
+  output: 'export',
 }
 
 export default nextConfig

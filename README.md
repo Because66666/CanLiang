@@ -19,17 +19,15 @@
 ## 系统要求
 
 - Python 3.6+
-- Node.js和npm（用于前端开发和构建）
-- BetterGI已安装（用于获取日志文件）
 
 ## 快速开始
 
 ### 首次运行
 
-只需运行项目根目录下的`run.py`脚本：
+只需运行项目根目录下的`lite_runner.py`脚本：
 
 ```bash
-python run.py
+python lite_runner.py
 ```
 
 首次运行时，脚本会自动执行以下操作：
@@ -37,8 +35,7 @@ python run.py
 1. 检测BetterGI安装路径
 2. 配置Python虚拟环境
 3. 安装后端依赖
-4. 安装并构建前端环境
-5. 启动后端和前端服务
+4. 启动服务
 
 
 
@@ -47,12 +44,12 @@ python run.py
 初始化完成后，再次运行时将跳过环境配置步骤，直接启动服务器。
 
 ```bash
-python run.py
+python lite_runner.py
 ```
 
 ## 手动配置
 
-如果自动检测BetterGI安装路径失败，您需要手动在`server/.env`文件中设置BetterGI的安装路径：
+如果自动检测BetterGI安装路径失败，您需要手动在`mini/.env`文件中设置BetterGI的安装路径：
 
 ```
 BETTERGI_PATH=您的BetterGI安装路径
@@ -62,7 +59,13 @@ BETTERGI_PATH=您的BetterGI安装路径
 
 ```
 Analyse_bettergi_log/
-├── run.py                 # 主运行脚本
+├── mini/                  # 新一代免npm环境的服务。已将前端静态导出。
+│   ├── app.py            # Flask应用主文件
+│   ├── static/           # 前端静态文件
+│   ├── requirements.txt  # Python依赖列表
+│   └── README.md         # 后端服务说明
+├── lite_runner.py         # 现启动脚本
+├── run.py                 # 前一代运行脚本
 ├── server/                # 后端服务
 │   ├── app.py            # Flask应用主文件
 │   ├── analyse.py        # 日志分析模块
@@ -95,20 +98,20 @@ GET /api/analyse?date=YYYYMMDD
 
 ## 使用方法
 
-1. 启动应用后，通过浏览器访问 http://localhost:3000
+1. 启动应用后，通过浏览器访问 http://localhost:5000
 2. 在Web界面上选择要分析的日志日期
 3. 查看分析结果，包括交互物品的统计信息
 
 ## 故障排除
 
-- 如果无法自动检测BetterGI安装路径，请手动在`server/.env`文件中设置
-- 确保已安装Python和Node.js
-- 检查防火墙设置，确保允许本地端口5000（后端）和3000（前端）的访问
+- 如果无法自动检测BetterGI安装路径，请手动在`mini/.env`文件中设置
+- 确保已安装Python
+- 检查防火墙设置，确保允许本地端口5000的访问
 
 ## 开发者信息
 
 作者: Because66666
-版本: 1.1.0
+版本: 1.1.2
 
 ## 许可证
 

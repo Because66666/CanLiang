@@ -1,1 +1,1 @@
-python run.py
+python lite_runner.py
