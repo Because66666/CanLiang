@@ -1,7 +1,6 @@
 import os.path
 import re
 from flask import Flask, jsonify, request, send_from_directory
-from flask_cors import CORS
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -13,8 +12,6 @@ bgi_logdir = os.path.join(os.getenv('BETTERGI_PATH'), 'log')
 # 创建Flask应用实例，设置静态文件夹路径为'static'
 app = Flask(__name__, static_folder='static')
 
-# 启用跨域资源共享
-CORS(app)
 
 
 # 解析日志内容的函数
