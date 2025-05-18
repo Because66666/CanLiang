@@ -178,7 +178,7 @@ def analyse_log():
     if "error" in result:
         return jsonify(result), 400
     items = result['item_count']
-    forbidden  = ['调查', '直接拾取']
+    forbidden = ['调查', '直接拾取']
     for keyword in forbidden:
         if keyword in items:
             del items[keyword]
