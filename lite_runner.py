@@ -372,6 +372,18 @@ def create_init_marker() -> None:
     except Exception as e:
         logger.warning(f"创建初始化标记文件失败: {e}")
 
+def open_browser(url: str) -> None:
+    """
+    打开默认浏览器并导航到指定URL
+
+    参数:
+        url (str): 要导航到的URL
+    """
+    import webbrowser
+    try:
+        webbrowser.open(url)
+    except Exception as e:
+        logger.warning(f"打开浏览器时出错: {e}")
 
 def main() -> int:
     """
@@ -413,6 +425,8 @@ def main() -> int:
         # 如果是首次运行且成功启动了服务，创建标记文件
         if first_run:
             create_init_marker()
+
+        open_browser("http://localhost:5000")
 
         logger.info("BetterGI日志分析工具已成功启动，你可以通过 http://localhost:5000 进行访问。")
         logger.info("按Ctrl+C可以终止服务")

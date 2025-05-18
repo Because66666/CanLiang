@@ -2,6 +2,7 @@ import os.path
 import re
 from flask import Flask, jsonify, request, send_from_directory
 from dotenv import load_dotenv
+from datetime import *
 
 # 加载环境变量
 load_dotenv()
@@ -12,6 +13,26 @@ bgi_logdir = os.path.join(os.getenv('BETTERGI_PATH'), 'log')
 # 创建Flask应用实例，设置静态文件夹路径为'static'
 app = Flask(__name__, static_folder='static')
 
+
+def format_timedelta(td) -> str:
+    """将 timedelta 对象格式化为 'X小时Y分钟' 的形式"""
+    if td is None:
+        return "0分钟"
+    # 计算总秒数
+    total_seconds = int(td.total_seconds())
+
+    # 计算小时和分钟
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, _ = divmod(remainder, 60)
+
+    # 拼接字符串（忽略零值部分）
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours}小时")
+    if minutes > 0:
+        parts.append(f"{minutes}分钟")
+
+    return ''.join(parts) if parts else "0分钟"
 
 
 # 解析日志内容的函数
@@ -26,6 +47,9 @@ def parse_log(log_content):
 
     type_count = {}
     interaction_items = []
+    start_time = None
+    end_time = None
+    delta_time = timedelta()
 
     for match in matches:
         timestamp = match[0]
@@ -43,6 +67,11 @@ def parse_log(log_content):
         if '交互或拾取' in details:
             item = details.split('：')[1].strip('"')
             interaction_items.append(item)
+        elif '主窗体实例化' in details:
+            start_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
+        elif '主窗体退出' in details:
+            end_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
+            delta_time += (end_time - start_time)
 
     # 统计交互或拾取物品中每个字符串出现的次数
     item_count = {}
@@ -56,7 +85,8 @@ def parse_log(log_content):
         'type_count': type_count,
         'interaction_items': interaction_items,
         'interaction_count': len(interaction_items),
-        'item_count': item_count
+        'item_count': item_count,
+        'delta_time': format_timedelta(delta_time)
     }
 
 
@@ -148,10 +178,13 @@ def analyse_log():
     if "error" in result:
         return jsonify(result), 400
     items = result['item_count']
-    if '调查' in items:
-        del items['调查']
+    forbidden  = ['调查', '直接拾取']
+    for keyword in forbidden:
+        if keyword in items:
+            del items[keyword]
     response = {
-        'item_count': items
+        'item_count': items,
+        'duration': result['delta_time']
     }
     return jsonify(response)
 

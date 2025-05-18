@@ -378,6 +378,7 @@ const chartVariants = {
   const categories = categorizeItems(data.item_count)
   const totalItems = getTotalItemCount(data.item_count)
   const uniqueItems = getUniqueItemCount(data.item_count)
+  const duration = data.duration
   const top10Items = getTop5Items(data.item_count)
   const categoryTotals = getCategoryTotals(categories)
   const pieChartData = generatePieChart(categoryTotals)
@@ -418,10 +419,10 @@ const chartVariants = {
             <CardContent className="flex items-center justify-between p-6">
               <div>
                 <p className="text-sm" style={{ color: colors.secondary }}>
-                  物品种类
+                  运行时间
                 </p>
                 <p className="text-3xl font-bold" style={{ color: colors.darkText }}>
-                  {uniqueItems}
+                  {duration}
                 </p>
               </div>
               <BarChart2 className="h-8 w-8" style={{ color: colors.primary }} />
