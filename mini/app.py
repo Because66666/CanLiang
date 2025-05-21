@@ -19,7 +19,7 @@ def format_timedelta(td) -> str:
     if td is None:
         return "0分钟"
     # 计算总秒数
-    total_seconds = int(td.total_seconds())
+    total_seconds = td
 
     # 计算小时和分钟
     hours, remainder = divmod(total_seconds, 3600)
@@ -49,7 +49,7 @@ def parse_log(log_content):
     interaction_items = []
     start_time = None
     end_time = None
-    delta_time = timedelta()
+    duration = 0
 
     for match in matches:
         timestamp = match[0]
@@ -68,10 +68,12 @@ def parse_log(log_content):
             item = details.split('：')[1].strip('"')
             interaction_items.append(item)
         elif '主窗体实例化' in details:
-            start_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
-        elif '主窗体退出' in details:
+            if start_time is None:
+                start_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
+        elif '主窗体退出' in details or '将执行 关机' in details:
             end_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
-            delta_time += (end_time - start_time)
+
+
 
     # 统计交互或拾取物品中每个字符串出现的次数
     item_count = {}
@@ -81,12 +83,14 @@ def parse_log(log_content):
         else:
             item_count[item] = 1
 
+    if start_time and end_time:
+        duration = duration + (end_time - start_time).seconds
     return {
         'type_count': type_count,
         'interaction_items': interaction_items,
         'interaction_count': len(interaction_items),
         'item_count': item_count,
-        'delta_time': format_timedelta(delta_time)
+        'delta_time': format_timedelta(duration)
     }
 
 
@@ -130,11 +134,6 @@ def get_log_list():
     return l2
 
 
-# 获取日志文件列表
-log_list = get_log_list()
-log_list.reverse()
-
-
 # 提供静态资源的路由
 @app.route('/')
 def serve_index():
@@ -160,7 +159,9 @@ def get_log_list_api():
     提供日志文件列表的API接口。
     :return: 包含日志文件列表的JSON响应
     """
-    global log_list
+    # 获取日志文件列表
+    log_list = get_log_list()
+    log_list.reverse()
     return jsonify({'list': log_list})
 
 
