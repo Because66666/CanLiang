@@ -1,0 +1,2 @@
+.venv\Scripts\activate
+pyinstaller --onefile  --clean --name Canliang --add-data "static;static"  --add-data ".env;."  app.py 
