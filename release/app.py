@@ -81,6 +81,8 @@ def setup_env_file(install_path: Optional[str]) -> None:
             f.write(f"#此处填写BetterGI的安装文件夹路径。\nBETTERGI_PATH={install_path}")
     else:
         logger.warning("未能检测到BetterGI安装路径。请手动在/.env中填写安装BetterGI的路径")
+    return install_path
+
 
 # 检测BetterGI安装路径并设置环境变量
 install_path = find_bettergi_install_path()
@@ -90,7 +92,7 @@ setup_env_file(install_path)
 load_dotenv()
 
 # 获取日志目录路径
-bgi_logdir = os.path.join(os.getenv('BETTERGI_PATH'), 'log')
+bgi_logdir = os.path.join(install_path, 'log')
 
 # 创建Flask应用实例，设置静态文件夹路径为'static'
 app = Flask(__name__, static_folder='static')
@@ -154,8 +156,6 @@ def parse_log(log_content):
                 start_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
         elif '主窗体退出' in details or '将执行 关机' in details:
             end_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
-
-
 
     # 统计交互或拾取物品中每个字符串出现的次数
     item_count = {}
