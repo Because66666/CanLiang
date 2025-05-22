@@ -3,10 +3,11 @@ import os
 import re
 import logging
 import subprocess
+import sys
 from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory
-from dotenv import load_dotenv
 from datetime import *
+import argparse
 
 # 配置日志
 logging.basicConfig(
@@ -18,6 +19,12 @@ logger = logging.getLogger('BetterGI初始化')
 
 # 全局变量
 script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 获取启动参数
+parser = argparse.ArgumentParser(description='参量质变仪，用于解析BetterGI日志。')
+parser.add_argument('-p', '--path', default=None, help='BetterGI程序路径')
+args = parser.parse_args()
+install_path = args.path
 
 
 def find_bettergi_install_path() -> Optional[str]:
@@ -65,32 +72,15 @@ def find_bettergi_install_path() -> Optional[str]:
     return None
 
 
-def setup_env_file(install_path: Optional[str]) -> None:
-    """
-    设置环境变量文件
-
-    参数:
-        install_path (Optional[str]): BetterGI的安装路径
-    """
-    env_file_path = os.path.join(script_dir, '.env')
-    os.makedirs(os.path.dirname(env_file_path), exist_ok=True)
-
-    if install_path:
-        logger.info(f"成功检测到BetterGI安装路径: {install_path}")
-        with open(env_file_path, 'w', encoding='utf8') as f:
-            f.write(f"#此处填写BetterGI的安装文件夹路径。\nBETTERGI_PATH={install_path}")
-    else:
-        logger.warning("未能检测到BetterGI安装路径。请手动在/.env中填写安装BetterGI的路径")
-    return install_path
-
-
 # 检测BetterGI安装路径并设置环境变量
-install_path = find_bettergi_install_path()
-setup_env_file(install_path)
-
-# 加载环境变量
-load_dotenv()
-
+if install_path is None:
+    logger.info('正在尝试查找BetterGI安装路径。')
+    install_path = find_bettergi_install_path()
+    if install_path is None:
+        logger.error('未找到BetterGI安装路径。')
+        sys.exit(1)
+else:
+    logger.info(f'已指定BetterGI安装路径为: {install_path}')
 # 获取日志目录路径
 bgi_logdir = os.path.join(install_path, 'log')
 

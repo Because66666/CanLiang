@@ -1,2 +1,2 @@
 conda activate Canliang
-pyinstaller --onefile  --clean --name Canliang --add-data "static;static"  --add-data ".env;."  app.py 
+pyinstaller --onefile  --clean --name Canliang --add-data "static;static"  --add-data ".env;."  --icon "D:\python\Analyse_bettergi_log\CanLiang\release\favicon.ico"  app.py 

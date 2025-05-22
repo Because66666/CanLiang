@@ -1,10 +1,5 @@
 # 参量质变仪：BetterGI日志分析工具
 
-## 两行速通这个文件夹是干什么的
-
-完整项目地址：https://github.com/Because66666/CanLiang <br>
-我对C#不了解。目前项目可以由python作为后端对BetterGI日志进行分析，侧重物品收集分析。渲染需要的静态文件在static下。后端给前端提供JSON数据。API接口介绍在下文。
-
 ## 项目介绍
 
 参量质变仪：BetterGI日志分析工具 是一个用于分析BetterGI（Better Genshin Impact）日志文件的应用程序。该工具提供了直观的Web界面，帮助用户查看和分析BetterGI生成的日志信息，特别是关于游戏中交互和拾取物品的统计数据。
@@ -16,6 +11,15 @@
 - 统计交互或拾取物品的出现次数
 - 提供REST API接口进行日志分析
 - 通过Web界面直观展示分析结果
+
+### EXE可执行文件的使用方法
+1. 直接启动，会自动检测BetterGI安装路径。
+2. 使用`--path=xxx`参数指定BetterGI安装路径。
+3. 使用`--help`或者`-h`参数查看帮助信息。
+举例：
+```bash
+.\Canliang.exe --path=D:\BetterGI
+```
 
 ### 界面截图
 
