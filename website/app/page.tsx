@@ -32,6 +32,8 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isChangingDate, setIsChangingDate] = useState(false)
   const [animationKey, setAnimationKey] = useState(0)
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+
 
   // 定义颜色方案
   const colors = {
@@ -126,6 +128,10 @@ export default function InventoryPage() {
 
     fetchDateList()
   }, [])
+
+  const handleSelectAll = () => {
+    setSelectedDate('all')  // 设定一个特殊值来表示“全部”
+  }
 
   // 获取物品数据
   useEffect(() => {
@@ -236,7 +242,7 @@ export default function InventoryPage() {
   const getTop5Items = (items: Record<string, number>) => {
     return Object.entries(items)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
+      .slice(0, 15)
   }
 
   // 过滤和排序物品 (默认按数量排序)
@@ -256,39 +262,83 @@ export default function InventoryPage() {
     return Object.keys(items).length
   }
 
-    // 生成饼图SVG路径
   const generatePieChart = (data: CategoryTotal[]) => {
-      const total = data.reduce((sum, item) => sum + item.count, 0)
-      let currentAngle = 0
-  
-      return data.map((item, index) => {
-        const percentage = item.count / total
-        const startAngle = currentAngle
-        const endAngle = currentAngle + percentage * 2 * Math.PI
-  
-        // 计算SVG路径
-        const x1 = 100 + 80 * Math.cos(startAngle)
-        const y1 = 100 + 80 * Math.sin(startAngle)
-        const x2 = 100 + 80 * Math.cos(endAngle)
-        const y2 = 100 + 80 * Math.sin(endAngle)
-  
-        // 大弧标志 (large-arc-flag)
-        const largeArcFlag = percentage > 0.5 ? 1 : 0
-  
-        // 创建SVG路径
-        const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArcFlag} 1 ${x2} ${y2} Z`
-  
-        currentAngle = endAngle
-  
-        return {
-          path,
-          color: item.color,
-          name: item.name,
-          count: item.count,
-          percentage: (percentage * 100).toFixed(1),
-        }
-      })
+    const total = data.reduce((sum, item) => sum + item.count, 0)
+
+    // 检查是否只有一个非 0 数据项
+    const nonZeroItems = data.filter(item => item.count > 0)
+    if (nonZeroItems.length === 1) {
+      const item = nonZeroItems[0]
+      return [{
+        isFullCircle: true,
+        color: item.color,
+        name: item.name,
+        count: item.count,
+        percentage: '100.0',
+      }]
     }
+
+    let currentAngle = 0
+
+    return data.map((item) => {
+      const percentage = item.count / total
+      const startAngle = currentAngle
+      const endAngle = currentAngle + percentage * 2 * Math.PI
+
+      const x1 = 100 + 80 * Math.cos(startAngle)
+      const y1 = 100 + 80 * Math.sin(startAngle)
+      const x2 = 100 + 80 * Math.cos(endAngle)
+      const y2 = 100 + 80 * Math.sin(endAngle)
+
+      const largeArcFlag = percentage > 0.5 ? 1 : 0
+
+      const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArcFlag} 1 ${x2} ${y2} Z`
+
+      currentAngle = endAngle
+
+      return {
+        path,
+        color: item.color,
+        name: item.name,
+        count: item.count,
+        percentage: (percentage * 100).toFixed(1),
+      }
+    })
+  }
+
+  // 生成饼图SVG路径
+//   const generatePieChart = (data: CategoryTotal[]) => {
+//       const total = data.reduce((sum, item) => sum + item.count, 0)
+//       let currentAngle = 0
+  
+//       return data.map((item, index) => {
+//         const percentage = item.count / total
+//         const startAngle = currentAngle
+//         const endAngle = currentAngle + percentage * 2 * Math.PI
+  
+//         // 计算SVG路径
+//         const x1 = 100 + 80 * Math.cos(startAngle)
+//         const y1 = 100 + 80 * Math.sin(startAngle)
+//         const x2 = 100 + 80 * Math.cos(endAngle)
+//         const y2 = 100 + 80 * Math.sin(endAngle)
+  
+//         // 大弧标志 (large-arc-flag)
+//         const largeArcFlag = percentage > 0.5 ? 1 : 0
+  
+//         // 创建SVG路径
+//         const path = `M 100 100 L ${x1} ${y1} A 80 80 0 ${largeArcFlag} 1 ${x2} ${y2} Z`
+  
+//         currentAngle = endAngle
+  
+//         return {
+//           path,
+//           color: item.color,
+//           name: item.name,
+//           count: item.count,
+//           percentage: (percentage * 100).toFixed(1),
+//         }
+//       })
+//     }
       // 获取物品对应的颜色
   const getItemColor = (name: string) => {
     let category = getCategory(name)
@@ -383,6 +433,11 @@ const chartVariants = {
   const categoryTotals = getCategoryTotals(categories)
   const pieChartData = generatePieChart(categoryTotals)
 
+   // 新增：处理扇形区域悬停
+  const handleSegmentHover = (index: number | null) => {
+    setHoverIndex(index)
+  }
+
   // 找出最大数量，用于计算条形图比例
   const maxCount = top10Items[0][1]
   return (
@@ -451,6 +506,119 @@ const chartVariants = {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* 左侧图表 */}
         <div className="w-full lg:w-1/3 space-y-8">
+
+          {/* 饼状图 */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`pie-chart-${animationKey}`}
+              variants={chartVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <Card className="border-0 shadow-sm overflow-hidden">
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-bold mb-4" style={{ color: colors.secondary }}>
+                    物品类别分布
+                  </h2>
+                  <div className="flex flex-col items-center">
+                    <motion.div
+                      className="relative w-[200px] h-[200px]"
+                      initial={{ rotate: -90, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      transition={{ duration: 0.8, type: "spring" }}
+                    >
+                      <svg viewBox="0 0 200 200" className="w-full h-full">
+                        {pieChartData.map((segment, index) => {
+                          if ('isFullCircle' in segment && segment.isFullCircle) {
+                            return (
+                              <motion.circle
+                                key={index}
+                                cx="100"
+                                cy="100"
+                                r="80"
+                                fill={segment.color}
+                                onMouseEnter={() => handleSegmentHover(index)}
+                                onMouseLeave={() => handleSegmentHover(null)}
+                                whileHover={{ scale: 1.15 }}
+                                transition={{ type: "spring", stiffness: 300 }}
+                              />
+                            )
+                          }
+
+                          return (
+                            <motion.path
+                              key={index}
+                              d={segment.path}
+                              fill={segment.color}
+                              stroke="white"
+                              strokeWidth="1"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.1 * index, duration: 0.5 }}
+                              onMouseEnter={() => handleSegmentHover(index)}
+                              onMouseLeave={() => handleSegmentHover(null)}
+                              whileHover={{
+                                scale: 1.15,
+                                transformOrigin: "center",
+                                transition: { type: "spring", stiffness: 300 }
+                              }}
+                            />
+                          )
+                        })}
+                      </svg>
+                    </motion.div>
+                    {/* 图例部分修改 */}
+                    <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 w-full">
+                      {pieChartData.map((segment, index) => (
+                        <motion.div
+                          key={index}
+                          className="flex items-center"
+                          style={{
+                            backgroundColor: hoverIndex === index ? '#f0f4ff' : 'transparent',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                          }}
+                          onMouseEnter={() => handleSegmentHover(index)}
+                          onMouseLeave={() => handleSegmentHover(null)}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div
+                            className="w-4 h-4 mr-2 flex-shrink-0 rounded-sm"
+                            style={{ backgroundColor: segment.color }}
+                          ></div>
+                          <div className="flex justify-between w-full">
+                            <motion.span
+                              className="text-sm font-medium"
+                              animate={{
+                                fontWeight: hoverIndex === index ? 700 : 500,
+                                scale: hoverIndex === index ? 1.05 : 1,
+                                color: hoverIndex === index ? colors.primary : colors.secondary
+                              }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              {segment.name}
+                            </motion.span>
+                            <motion.span
+                              className="text-sm"
+                              animate={{
+                                scale: hoverIndex === index ? 1.1 : 1,
+                                color: hoverIndex === index ? colors.primary : colors.secondary
+                              }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              {segment.percentage}%
+                            </motion.span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </AnimatePresence>
+
           {/* 条形图 */}
           <AnimatePresence mode="wait">
             <motion.div
@@ -463,10 +631,10 @@ const chartVariants = {
               <Card className="border-0 shadow-sm overflow-hidden">
                 <CardContent className="p-6">
                   <h2 className="text-xl font-bold mb-4" style={{ color: colors.secondary }}>
-                    物品数量排行（前五个）
+                    物品数量排行（前十五）
                   </h2>
                   <div className="space-y-4">
-                    {top10Items.slice(0, 5).map(([name, count], index) => (
+                    {top10Items.slice(0, 15).map(([name, count], index) => (
                       <motion.div
                         key={index}
                         className="flex flex-col"
@@ -497,69 +665,7 @@ const chartVariants = {
             </motion.div>
           </AnimatePresence>
 
-          {/* 饼状图 */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`pie-chart-${animationKey}`}
-              variants={chartVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-            >
-              <Card className="border-0 shadow-sm overflow-hidden">
-                <CardContent className="p-6">
-                  <h2 className="text-xl font-bold mb-4" style={{ color: colors.secondary }}>
-                    物品类别分布
-                  </h2>
-                  <div className="flex flex-col items-center">
-                    <motion.div
-                      className="relative w-[200px] h-[200px]"
-                      initial={{ rotate: -90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      transition={{ duration: 0.8, type: "spring" }}
-                    >
-                      <svg viewBox="0 0 200 200" className="w-full h-full">
-                        {pieChartData.map((segment, index) => (
-                          <motion.path
-                            key={index}
-                            d={segment.path}
-                            fill={segment.color}
-                            stroke="white"
-                            strokeWidth="1"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.1 * index, duration: 0.5 }}
-                          />
-                        ))}
-                      </svg>
-                    </motion.div>
-                    <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 w-full">
-                      {categoryTotals.map((category, index) => (
-                        <motion.div
-                          key={index}
-                          className="flex items-center"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 + 0.1 * index, duration: 0.3 }}
-                        >
-                          <div
-                            className="w-4 h-4 mr-2 flex-shrink-0 rounded-sm"
-                            style={{ backgroundColor: category.color }}
-                          ></div>
-                          <div className="flex justify-between w-full">
-                            <span className="text-sm font-medium">{category.name}</span>
-                            <span className="text-sm" style={{ color: colors.secondary }}>
-                              {category.count} ({pieChartData[index].percentage}%)
-                            </span>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </AnimatePresence>
+          
         </div>
 
         {/* 右侧物品列表 */}
@@ -592,6 +698,21 @@ const chartVariants = {
                   选择日期:
                 </span>
               </div>
+
+              {/* “全部”按钮 */}
+              <button
+                onClick={handleSelectAll}
+                className="px-4 py-2 rounded-md text-sm font-medium shadow-sm"
+                style={{
+                  backgroundColor: selectedDate === 'all' ? colors.primary : '#fff',
+                  color: selectedDate === 'all' ? '#fff' : colors.secondary,
+                  boxShadow: `0 0 0 1px ${colors.lightBorder}`,
+                }}
+
+              >
+                全部
+              </button>
+
               <Select value={selectedDate} onValueChange={handleDateChange}>
                 <SelectTrigger
                   className="w-[240px] border-0 shadow-sm focus:ring-2"
