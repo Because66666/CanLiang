@@ -24,6 +24,8 @@ import signal
 import time
 import json
 from typing import Optional, Tuple, List, Dict, Any, Union
+import shutil
+import os
 
 # 配置日志
 logging.basicConfig(
@@ -397,6 +399,7 @@ def main() -> int:
         setup_signal_handlers()
 
         first_run = is_first_run()
+        first_run = True;
 
         if first_run:
             logger.info("首次运行，将进行完整初始化...")
@@ -409,6 +412,36 @@ def main() -> int:
             if not setup_python_env():
                 logger.error("Python环境配置失败")
                 return 1
+            # if not setup_frontend_env():
+            #     logger.error("setup_frontend_env环境配置失败")
+            #     return 1
+            # folder_path = "/workspaces/CanLiang/mini/static"
+
+            # # 确保文件夹存在再删除
+            # if os.path.exists(folder_path):
+            #     shutil.rmtree(folder_path)
+            #     print("文件夹已删除。")
+            # else:
+            #     print("文件夹不存在。")
+            # # 源文件夹路径
+            # src_folder = "/workspaces/CanLiang/website/output"
+
+            # # 目标父文件夹路径
+            # dst_parent_folder = "/workspaces/CanLiang/mini/"
+
+            # # 目标文件夹路径（将整个源文件夹拷贝进去）
+            # dst_folder = os.path.join(dst_parent_folder, os.path.basename(src_folder))
+
+            # # 执行拷贝
+            # shutil.copytree(src_folder, dst_folder)
+            # # 原文件夹路径
+            # old_path = "/workspaces/CanLiang/mini/output"
+
+            # # 新文件夹路径
+            # new_path = folder_path
+
+            # # 重命名（或移动）
+            # os.rename(old_path, new_path)
 
         else:
             logger.info("检测到非首次运行，跳过环境配置步骤...")

@@ -1,0 +1,1 @@
+pyinstaller --onefile --add-data="static:static" --hidden-import=dotenv app.py
