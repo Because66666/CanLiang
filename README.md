@@ -14,7 +14,10 @@
 
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/980f13a9-5e94-4be8-8ceb-7a04d054a118" alt="示例图片" width="100%">
+<img src="https://github.com/user-attachments/assets/56430317-2614-4e99-adf0-96c8adcf6f7f" alt="示例图片" width="100%">
+
+### 致谢提交PR的合作开发者
+[xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2  
 
 ## 系统要求
 
