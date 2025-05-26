@@ -23,8 +23,10 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # 获取启动参数
 parser = argparse.ArgumentParser(description='参量质变仪，用于解析BetterGI日志。')
 parser.add_argument('-p', '--path', default=None, help='BetterGI程序路径')
+parser.add_argument('-port', '--port', default=3000, help='网页前端使用的本地端口号')
 args = parser.parse_args()
 install_path = args.path
+web_port = args.port
 
 
 def find_bettergi_install_path() -> Optional[str]:
@@ -391,4 +393,4 @@ def analyse_single_log(date):
 
 # 启动Flask应用
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    app.run(debug=True, host='0.0.0.0', port=web_port)
