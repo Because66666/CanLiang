@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion"
 
 interface InventoryData {
   item_count: Record<string, number>
+  duration: string
 }
 
 interface DateItem {
@@ -275,6 +276,7 @@ export default function InventoryPage() {
         name: item.name,
         count: item.count,
         percentage: '100.0',
+        path: "", // 添加空路径属性以满足类型要求
       }]
     }
 
@@ -671,36 +673,66 @@ const chartVariants = {
         {/* 右侧物品列表 */}
         <div className="w-full lg:w-2/3">
           {/* 搜索和日期选择区域 */}
-          <div className="mb-8 p-6 rounded-lg" style={{ backgroundColor: colors.light }}>
-
-            {/* 搜索 */}
-            <div className="mb-6 flex flex-col items-center gap-4">
-              <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-3 h-4 w-4" style={{ color: colors.primary }} />
-                <Input
-                  placeholder="搜索物品..."
-                  className="pl-10 py-6 border-0 shadow-sm focus:ring-2"
-                  style={{
-                    borderColor: colors.lightBorder,
-                    boxShadow: `0 0 0 1px ${colors.lightBorder}`,
-                  }}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8 p-6 rounded-lg"
+            style={{ backgroundColor: colors.light }}
+          >
+          <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
+              {/* 搜索 */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4" style={{ color: colors.primary }} />
+                  <span className="text-sm" style={{ color: colors.secondary }}>
+                    搜索物品:
+                  </span>
+                </div>
+                <div className="relative w-full max-w-md">
+                  <Input
+                    placeholder="搜索物品..."
+                    className="pl-4 py-3 border-0 shadow-sm focus:ring-2 w-[240px]"
+                    style={{
+                      borderColor: colors.lightBorder,
+                      boxShadow: `0 0 0 1px ${colors.lightBorder}`,
+                    }}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* 日期选择 */}
-            <div className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-4 w-4" style={{ color: colors.primary }} />
-                <span className="text-sm" style={{ color: colors.secondary }}>
-                  选择日期:
-                </span>
+              {/* 日期选择 */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-4 w-4" style={{ color: colors.primary }} />
+                  <span className="text-sm" style={{ color: colors.secondary }}>
+                    选择日期:
+                  </span>
+                </div>
+                <Select value={selectedDate} onValueChange={handleDateChange}>
+                  <SelectTrigger
+                    className="w-[240px] border-0 shadow-sm focus:ring-2"
+                    style={{
+                      borderColor: colors.lightBorder,
+                      boxShadow: `0 0 0 1px ${colors.lightBorder}`,
+                    }}
+                  >
+                    <SelectValue placeholder="选择日期" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateList.map((date) => (
+                      <SelectItem key={date.value} value={date.value}>
+                        {date.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* “全部”按钮 */}
-              <button
+                            <button
                 onClick={handleSelectAll}
                 className="px-4 py-2 rounded-md text-sm font-medium shadow-sm"
                 style={{
@@ -712,27 +744,9 @@ const chartVariants = {
               >
                 全部
               </button>
-
-              <Select value={selectedDate} onValueChange={handleDateChange}>
-                <SelectTrigger
-                  className="w-[240px] border-0 shadow-sm focus:ring-2"
-                  style={{
-                    borderColor: colors.lightBorder,
-                    boxShadow: `0 0 0 1px ${colors.lightBorder}`,
-                  }}
-                >
-                  <SelectValue placeholder="选择日期" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dateList.map((date) => (
-                    <SelectItem key={date.value} value={date.value}>
-                      {date.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
-          </div>
+          </motion.div>
+
 
           {/* 物品列表 */}
           <Tabs defaultValue="all" className="flex flex-col items-center">
