@@ -449,60 +449,75 @@ const chartVariants = {
       </h1>
 
       {/* 统计卡片 */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+      <div
         className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3"
       >
-        <motion.div variants={itemVariants}>
+        <div>
           <Card className="border-0 shadow-sm overflow-hidden" style={{ backgroundColor: colors.light }}>
             <CardContent className="flex items-center justify-between p-6">
               <div>
                 <p className="text-sm" style={{ color: colors.secondary }}>
                   总物品数量
                 </p>
-                <p className="text-3xl font-bold" style={{ color: colors.darkText }}>
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-3xl font-bold" 
+                  style={{ color: colors.darkText }}
+                >
                   {totalItems}
-                </p>
+                </motion.p>
               </div>
               <BarChart2 className="h-8 w-8" style={{ color: colors.primary }} />
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants}>
+        <div>
           <Card className="border-0 shadow-sm overflow-hidden" style={{ backgroundColor: colors.light }}>
             <CardContent className="flex items-center justify-between p-6">
               <div>
                 <p className="text-sm" style={{ color: colors.secondary }}>
                   运行时间
                 </p>
-                <p className="text-3xl font-bold" style={{ color: colors.darkText }}>
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="text-3xl font-bold" 
+                  style={{ color: colors.darkText }}
+                >
                   {duration}
-                </p>
+                </motion.p>
               </div>
               <BarChart2 className="h-8 w-8" style={{ color: colors.primary }} />
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants}>
+        <div>
           <Card className="border-0 shadow-sm overflow-hidden" style={{ backgroundColor: colors.light }}>
             <CardContent className="flex items-center justify-between p-6">
               <div>
                 <p className="text-sm" style={{ color: colors.secondary }}>
                   最多物品
                 </p>
-                <p className="text-3xl font-bold" style={{ color: colors.darkText }}>
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-3xl font-bold" 
+                  style={{ color: colors.darkText }}
+                >
                   {Object.entries(data.item_count).sort((a, b) => b[1] - a[1])[0][0]}
-                </p>
+                </motion.p>
               </div>
               <BarChart2 className="h-8 w-8" style={{ color: colors.primary }} />
             </CardContent>
           </Card>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* 主要内容区域 - 分为左侧条形图和右侧物品列表 */}
       <div className="flex flex-col lg:flex-row gap-8">
@@ -673,10 +688,7 @@ const chartVariants = {
         {/* 右侧物品列表 */}
         <div className="w-full lg:w-2/3">
           {/* 搜索和日期选择区域 */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+          <div
             className="mb-8 p-6 rounded-lg"
             style={{ backgroundColor: colors.light }}
           >
@@ -745,7 +757,7 @@ const chartVariants = {
                 全部
               </button>
             </div>
-          </motion.div>
+          </div>
 
 
           {/* 物品列表 */}
