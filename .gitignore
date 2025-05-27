@@ -4,6 +4,7 @@ server/.venv/
 mini/.venv/
 website/output/
 website/node_modules/
+release/build/
 # next.js
 website/.next/
 website/out/

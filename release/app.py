@@ -153,6 +153,7 @@ def parse_log(log_content, date_str):
     }
 
     current_start = None  # 当前段开始时间
+    current_end = None
 
     for match in matches:
         timestamp = match[0]  # 时间戳
@@ -189,11 +190,15 @@ def parse_log(log_content, date_str):
         elif '主窗体实例化' in details:
             current_start = datetime.strptime(timestamp, '%H:%M:%S.%f')
 
-        elif ('主窗体退出' in details or '将执行 关机' in details) and current_start:
+
+        elif ('主窗体退出' in details or '将执行 关机' in details or '游戏已退出' in details) and current_start:
             current_end = datetime.strptime(timestamp, '%H:%M:%S.%f')
             delta = (current_end - current_start).total_seconds()
-            duration += int(delta)
-            current_start = None  # 清除开始时间，准备下一段
+            if int(delta) >= 0:
+                duration += int(delta)
+            else:
+                logger.warning(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start,current_end,int(delta)}")
+            current_start = None
 
     return {
         # 'type_count': type_count,
@@ -204,6 +209,7 @@ def parse_log(log_content, date_str):
         'duration': duration,
         'cache_dict': cache_dict
     }
+
 
 def read_log_file(file_path, date_str):
     """
@@ -335,6 +341,7 @@ def item_trend():
 def duration_trend():
     return analyse_duration_history()
 
+
 @app.route('/api/total-items-trend', methods=['GET'])
 def item_history():
     return analyse_all_items()
@@ -379,6 +386,7 @@ def analyse_single_log(date):
         'item_count': total_item_count
     })
 
+
 def analyse_item_history(item_name):
     """
     分析物品历史数据
@@ -409,15 +417,16 @@ def analyse_duration_history():
     total_minutes = (total_seconds // 60).astype(int)
     data_counts = total_minutes.to_dict()
     return jsonify({
-        'data':data_counts
+        'data': data_counts
     })
+
 
 def analyse_all_items():
     if item_dataframe.empty:
         return jsonify({'msg': 'no data.'})
     data_counts = item_dataframe['日期'].value_counts().to_dict()
     return jsonify({
-        'data':data_counts
+        'data': data_counts
     })
 
 
@@ -434,4 +443,3 @@ if __name__ == "__main__":
 
     log_list = get_log_list()
     app.run(debug=True, host='0.0.0.0', port=3000)
-

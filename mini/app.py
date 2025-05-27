@@ -77,6 +77,7 @@ def parse_log(log_content, date_str):
     }
 
     current_start = None  # 当前段开始时间
+    current_end = None
 
     for match in matches:
         timestamp = match[0]  # 时间戳
@@ -113,11 +114,15 @@ def parse_log(log_content, date_str):
         elif '主窗体实例化' in details:
             current_start = datetime.strptime(timestamp, '%H:%M:%S.%f')
 
-        elif ('主窗体退出' in details or '将执行 关机' in details) and current_start:
+
+        elif ('主窗体退出' in details or '将执行 关机' in details or '游戏已退出' in details) and current_start:
             current_end = datetime.strptime(timestamp, '%H:%M:%S.%f')
             delta = (current_end - current_start).total_seconds()
-            duration += int(delta)
-            current_start = None  # 清除开始时间，准备下一段
+            if int(delta) >= 0:
+                duration += int(delta)
+            else:
+                print(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start,current_end,int(delta)}")
+            current_start = None
 
     return {
         # 'type_count': type_count,

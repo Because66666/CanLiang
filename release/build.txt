@@ -1,2 +1,4 @@
 conda activate Canliang
-pyinstaller --onefile  --clean --name Canliang --add-data "static;static"  --icon "D:\python\Analyse_bettergi_log\CanLiang\release\favicon.ico"  app.py 
+pyinstaller --onefile  --clean --name Canliang --add-data "static;static"  --icon "D:\python\Analyse_bettergi_log\CanLiang\release\favicon.ico"  --exclude-module=sqlalchemy  --exclude-module=psycopg2 --exclude-module=psycopg2    app.py 
+
+pyinstaller Canliang.spec
