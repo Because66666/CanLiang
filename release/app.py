@@ -1,3 +1,4 @@
+import importlib.util
 import os.path
 import os
 import re
@@ -6,13 +7,18 @@ import subprocess
 import sys
 from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory
-from datetime import *
+from datetime import datetime
+import time
+import threading
 import argparse
 import pandas as pd
 
+
+
+
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
@@ -23,11 +29,14 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # 获取启动参数
 parser = argparse.ArgumentParser(description='参量质变仪，用于解析BetterGI日志。')
-parser.add_argument('-p', '--path', default=None, help='BetterGI程序路径')
+parser.add_argument('-bgi', '--bgi_path', default=None, help='BetterGI程序路径')
 parser.add_argument('-port', '--port', default=3000, help='网页前端使用的本地端口号')
+parser.add_argument('-no', '--do_not_open_website', action='store_true', help='默认启动时打开网页，传递此参数以禁用')
 args = parser.parse_args()
-install_path = args.path
+install_path = args.bgi_path
 web_port = args.port
+do_not_open_website = args.do_not_open_website
+send_png_by_webhook_to_Lark = None
 
 
 def find_bettergi_install_path() -> Optional[str]:
@@ -75,6 +84,31 @@ def find_bettergi_install_path() -> Optional[str]:
     return None
 
 
+def open_browser_after_start():
+    """在Flask应用启动后打开浏览器"""
+
+    def target():
+        # 等待一段时间，确保Flask服务器完全启动
+        time.sleep(2)
+        url = 'http://127.0.0.1:3000'
+        try:
+            subprocess.run(['start', url], shell=True, check=True)
+            logger.info(f"成功启动浏览器并导航到 {url}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"启动浏览器时出现错误: {e}")
+        except Exception as e:
+            logger.error(f"启动浏览器时出现错误: {e}")
+            try:
+                subprocess.run(['start', url], check=True)
+            except Exception as e:
+                logger.error(f"启动浏览器时出现错误: {e}")
+
+    # 在新线程中执行浏览器打开操作，避免阻塞Flask应用的启动
+    threading.Thread(target=target).start()
+
+
+if not do_not_open_website:
+    open_browser_after_start()
 # 检测BetterGI安装路径并设置环境变量
 if install_path is None:
     logger.info('正在尝试查找BetterGI安装路径。')
@@ -197,7 +231,8 @@ def parse_log(log_content, date_str):
             if int(delta) >= 0:
                 duration += int(delta)
             else:
-                logger.warning(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start,current_end,int(delta)}")
+                logger.warning(
+                    f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, int(delta)}")
             current_start = None
 
     return {
@@ -441,5 +476,6 @@ if __name__ == "__main__":
     #     t2 = time.time()
     #     print(t2 - t1, 's')
 
-    log_list = get_log_list()
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    # log_list = get_log_list()
+
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
