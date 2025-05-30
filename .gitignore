@@ -4,7 +4,7 @@ server/.venv/
 mini/.venv/
 website/output/
 website/node_modules/
-release/build/
+release/build/Canliang
 release/screenshots/
 # next.js
 website/.next/

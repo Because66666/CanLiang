@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Canliang_v1.0.1',
+    name='Canliang_v1.0.3',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
