@@ -50,6 +50,7 @@ def format_timedelta(seconds):
     return ''.join(parts) if parts else "0分钟"
 
 
+
 def parse_log(log_content, date_str):
     """
     解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -88,6 +89,10 @@ def parse_log(log_content, date_str):
         # 过滤禁用的关键词
         if any(keyword in details for keyword in FORBIDDEN_ITEMS):
             continue
+        
+        # 转换时间戳
+        current_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
+        
         # 类型统计
         # type_count[log_type] = type_count.get(log_type, 0) + 1
 
@@ -111,18 +116,32 @@ def parse_log(log_content, date_str):
                 cache_dict['日期'].append(date_str)
 
         # 处理时间段
-        elif '主窗体实例化' in details:
-            current_start = datetime.strptime(timestamp, '%H:%M:%S.%f')
-
-
-        elif ('主窗体退出' in details or '将执行 关机' in details or '游戏已退出' in details) and current_start:
-            current_end = datetime.strptime(timestamp, '%H:%M:%S.%f')
-            delta = (current_end - current_start).total_seconds()
-            if int(delta) >= 0:
-                duration += int(delta)
+        if not current_start:
+            # 开始新的时间段
+            current_start = current_time
+            current_end = current_time
+        else:
+            # 计算与上一个有效时间的间隔
+            delta = (current_time - current_end).total_seconds()
+            if delta <= 300:
+                # 表明是连续的事件，更新结束时间
+                current_end = current_time
             else:
-                print(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start,current_end,int(delta)}")
-            current_start = None
+                # 表明是一段新的事件
+                if delta <= 0:
+                    logger.critical(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
+                else:
+                    # 累加持续时间
+                    duration += int(delta)
+                # 开始新的时间段
+                current_start = current_time
+                current_end = current_time
+
+    # 处理最后一段时间
+    if current_start and current_end and current_start != current_end:
+        delta = (current_end - current_start).total_seconds()
+        duration += int(delta)
+
 
     return {
         # 'type_count': type_count,
