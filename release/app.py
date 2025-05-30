@@ -356,7 +356,7 @@ def get_log_list_api():
     提供日志文件列表的API接口。
 
     Returns:
-        JSON: 包含日志文件列表的JSON响应
+        JSON: 包含日志文件列表的JSON响应.例如：{'list': ['20250501']}
     """
     global log_list
     if not log_list:
@@ -369,9 +369,13 @@ def get_log_list_api():
 def analyse_log():
     """
     提供日志分析的API接口，返回指定日期的日志分析结果。
-
+    请求参数:date='all'
+    如果没有all，则返回单个日期的数据。
     Returns:
-        JSON: 包含日志分析结果的JSON响应
+        JSON: 包含日志分析结果的JSON响应。例如：{
+        'duration': string,
+        'item_count': {item_name:int}
+    }
     """
     date = request.args.get('date', 'all')
 
@@ -383,6 +387,14 @@ def analyse_log():
 
 @app.route('/api/item-trend', methods=['GET'])
 def item_trend():
+    """
+    返回单个物品的历史记录。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     item_name = request.args.get('item', '')
     if item_name:
         return analyse_item_history(item_name)
@@ -391,11 +403,27 @@ def item_trend():
 
 @app.route('/api/duration-trend', methods=['GET'])
 def duration_trend():
+    """
+    返回所有日志中，每天的BGI持续运行时间。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     return analyse_duration_history()
 
 
 @app.route('/api/total-items-trend', methods=['GET'])
 def item_history():
+    """
+    返回所有日志中，拾取每天拾取总物品的数量。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     return analyse_all_items()
 
 
