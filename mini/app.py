@@ -50,7 +50,6 @@ def format_timedelta(seconds):
     return ''.join(parts) if parts else "0分钟"
 
 
-
 def parse_log(log_content, date_str):
     """
     解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -89,10 +88,10 @@ def parse_log(log_content, date_str):
         # 过滤禁用的关键词
         if any(keyword in details for keyword in FORBIDDEN_ITEMS):
             continue
-        
+
         # 转换时间戳
         current_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
-        
+
         # 类型统计
         # type_count[log_type] = type_count.get(log_type, 0) + 1
 
@@ -129,7 +128,8 @@ def parse_log(log_content, date_str):
             else:
                 # 表明是一段新的事件
                 if delta <= 0:
-                    logger.critical(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
+                    logger.critical(
+                        f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
                 else:
                     # 累加持续时间
                     duration += int(delta)
@@ -142,7 +142,6 @@ def parse_log(log_content, date_str):
         delta = (current_end - current_start).total_seconds()
         duration += int(delta)
 
-
     return {
         # 'type_count': type_count,
         # 'interaction_items': interaction_items,
@@ -152,6 +151,7 @@ def parse_log(log_content, date_str):
         'duration': duration,
         'cache_dict': cache_dict
     }
+
 
 def read_log_file(file_path, date_str):
     """
@@ -246,7 +246,7 @@ def get_log_list_api():
     提供日志文件列表的API接口。
 
     Returns:
-        JSON: 包含日志文件列表的JSON响应
+        JSON: 包含日志文件列表的JSON响应.例如：{'list': ['20250501']}
     """
     global log_list
     if not log_list:
@@ -259,9 +259,13 @@ def get_log_list_api():
 def analyse_log():
     """
     提供日志分析的API接口，返回指定日期的日志分析结果。
-
+    请求参数:date='all'
+    如果没有all，则返回单个日期的数据。
     Returns:
-        JSON: 包含日志分析结果的JSON响应
+        JSON: 包含日志分析结果的JSON响应。例如：{
+        'duration': string,
+        'item_count': {item_name:int}
+    }
     """
     date = request.args.get('date', 'all')
 
@@ -273,6 +277,14 @@ def analyse_log():
 
 @app.route('/api/item-trend', methods=['GET'])
 def item_trend():
+    """
+    返回单个物品的历史记录。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     item_name = request.args.get('item', '')
     if item_name:
         return analyse_item_history(item_name)
@@ -281,10 +293,27 @@ def item_trend():
 
 @app.route('/api/duration-trend', methods=['GET'])
 def duration_trend():
+    """
+    返回所有日志中，每天的BGI持续运行时间。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     return analyse_duration_history()
+
 
 @app.route('/api/total-items-trend', methods=['GET'])
 def item_history():
+    """
+    返回所有日志中，拾取每天拾取总物品的数量。
+
+    Returns:
+        JSON: 格式：{
+        'data': {‘date':int}
+    }
+    """
     return analyse_all_items()
 
 
@@ -327,6 +356,7 @@ def analyse_single_log(date):
         'item_count': total_item_count
     })
 
+
 def analyse_item_history(item_name):
     """
     分析物品历史数据
@@ -357,15 +387,16 @@ def analyse_duration_history():
     total_minutes = (total_seconds // 60).astype(int)
     data_counts = total_minutes.to_dict()
     return jsonify({
-        'data':data_counts
+        'data': data_counts
     })
+
 
 def analyse_all_items():
     if item_dataframe.empty:
         return jsonify({'msg': 'no data.'})
     data_counts = item_dataframe['日期'].value_counts().to_dict()
     return jsonify({
-        'data':data_counts
+        'data': data_counts
     })
 
 
@@ -380,5 +411,6 @@ if __name__ == "__main__":
     #     t2 = time.time()
     #     print(t2 - t1, 's')
 
-    log_list = get_log_list()
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    # log_list = get_log_list()
+
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
