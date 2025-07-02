@@ -11,6 +11,8 @@ const nextConfig = {
   },
   distDir: 'output',
   output: 'export',
+  basePath: '/CanLiang', // 根据bgi本体做出的改编.
+  assetPrefix: '/CanLiang', // 根据bgi本体做出的改编
 }
 
 export default nextConfig

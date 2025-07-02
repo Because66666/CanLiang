@@ -1,5 +1,6 @@
 # 用于使用无头浏览器发送飞书图片
 # 其中上传图片需要用到飞书应用。
+import datetime
 import subprocess
 import time
 import logging
@@ -60,8 +61,10 @@ def capture_flask_screenshot(lark_webhook_url=None, host='127.0.0.1', port=3000,
 
                 # 等待页面加载完成
                 page.wait_for_load_state("networkidle")
-                page.reload()
-                page.wait_for_load_state("networkidle")
+                page.get_by_role("combobox").click()
+                page.wait_for_timeout(1000)
+                ele = page.get_by_role("option", name=datetime.datetime.today().strftime("%Y%m%d"))
+                ele.click()
                 page.wait_for_timeout(3000)  # 等待动画结束
                 # 生成截图文件名
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
