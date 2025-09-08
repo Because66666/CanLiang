@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, BarChart2, CalendarIcon, Github, X, TrendingUp, Clock, Package } from "lucide-react"
+import { Search, BarChart2, CalendarIcon, Github, X, TrendingUp, Clock, Package, Download } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion, AnimatePresence } from "framer-motion"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
 
 interface InventoryData {
   item_count: Record<string, number>
@@ -49,6 +51,8 @@ export default function InventoryPage() {
   const [itemTrendData, setItemTrendData] = useState<ItemTrendData | null>(null)
   const [loadingTrend, setLoadingTrend] = useState(false)
   const [statModal, setStatModal] = useState<StatModalData | null>(null)
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
 
 
   // 定义颜色方案
@@ -168,6 +172,42 @@ export default function InventoryPage() {
     // 关闭统计模态框
   const closeStatModal = () => {
     setStatModal(null)
+  }
+
+  // 处理数据下载
+  const handleDataDownload = async (dataType: string) => {
+    setDownloadLoading(true)
+    try {
+      // 调用API获取下载链接
+      const response = await fetch(`/api/data-save?type=${dataType}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const downloadData = await response.json()
+      
+      // 依次下载文件
+      for (const [key, url] of Object.entries(downloadData)) {
+        if (typeof url === 'string') {
+          const link = document.createElement('a')
+          link.href = url
+          link.download = ''
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          // 添加延迟避免同时下载多个文件
+          await new Promise(resolve => setTimeout(resolve, 500))
+        }
+      }
+      
+      setDownloadDialogOpen(false)
+    } catch (error) {
+      console.error('下载失败:', error)
+      alert('下载失败，请稍后再试')
+    } finally {
+      setDownloadLoading(false)
+    }
   }
 
     // 处理日期变化
@@ -417,7 +457,7 @@ export default function InventoryPage() {
   visible: {
     opacity: 1,
     transition: {
-      duration: 0.5,
+      duration: 0.3,
       when: "beforeChildren",
       staggerChildren: 0.1,
     },
@@ -433,19 +473,7 @@ export default function InventoryPage() {
   },
 }
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { duration: 0.3 },
-  },
-  exit: {
-    y: -20,
-    opacity: 0,
-    transition: { duration: 0.2 },
-  },
-}
+
 
 const chartVariants = {
   hidden: { scale: 0.9, opacity: 0 },
@@ -543,9 +571,69 @@ const chartVariants = {
         </motion.a>
       </motion.div>
 
+      {/* 下载图标 */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="fixed top-20 right-6 z-50"
+      >
+        <Dialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen}>
+          <DialogTrigger asChild>
+            <motion.button
+              className="flex items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl"
+              style={{
+                backgroundColor: colors.light,
+                border: `2px solid ${colors.lightBorder}`,
+              }}
+              whileHover={{
+                scale: 1.1,
+                backgroundColor: colors.primary,
+                borderColor: colors.primary,
+              }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.div
+                whileHover={{
+                  color: "#ffffff",
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                <Download className="h-6 w-6" style={{ color: colors.secondary }} />
+              </motion.div>
+            </motion.button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>选择数据导出格式</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 py-4">
+              {['csv', 'excel', 'json', 'html', 'xml', 'pickle'].map((type) => (
+                <Button
+                  key={type}
+                  variant="outline"
+                  onClick={() => handleDataDownload(type)}
+                  disabled={downloadLoading}
+                  className="h-12 text-sm transition-all duration-200 hover:scale-105"
+                  style={{
+                    borderColor: colors.lightBorder,
+                    color: colors.secondary,
+                  }}
+                >
+                  {downloadLoading ? (
+                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    type.toUpperCase()
+                  )}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
+
       {/* 物品详情模态框 */}
-      <AnimatePresence>
-        {selectedItem && (
+      {selectedItem && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -584,12 +672,10 @@ const chartVariants = {
               )}
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
 
       {/* 统计趋势模态框 */}
-      <AnimatePresence>
-        {statModal && (
+      {statModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -628,8 +714,7 @@ const chartVariants = {
               )}
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
 
       <motion.h1
         initial={{ y: -20, opacity: 0 }}
@@ -648,7 +733,7 @@ const chartVariants = {
         animate="visible"
         className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3"
       >
-        <motion.div variants={itemVariants}>
+        <motion.div>
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -674,7 +759,7 @@ const chartVariants = {
           </motion.div>
         </motion.div>
 
-        <motion.div variants={itemVariants}>
+        <motion.div >
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -700,7 +785,7 @@ const chartVariants = {
           </motion.div>
         </motion.div>
 
-        <motion.div variants={itemVariants}>
+        <motion.div >
           <Card className="border-0 shadow-sm overflow-hidden" style={{ backgroundColor: colors.light }}>
             <CardContent className="flex items-center justify-between p-6">
               <div>
@@ -722,8 +807,7 @@ const chartVariants = {
         {/* 左侧图表 */}
         <div className="w-full lg:w-1/3 space-y-8">
           {/* 饼状图 */}
-          <AnimatePresence mode="wait">
-            <motion.div
+          <motion.div
               key={`pie-chart-${animationKey}`}
               variants={chartVariants}
               initial="hidden"
@@ -830,12 +914,10 @@ const chartVariants = {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          </AnimatePresence>
+          </motion.div>
 
           {/* 条形图 */}
-          <AnimatePresence mode="wait">
-            <motion.div
+          <motion.div
               key={`bar-chart-${animationKey}`}
               variants={chartVariants}
               initial="hidden"
@@ -876,8 +958,7 @@ const chartVariants = {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          </AnimatePresence>
+          </motion.div>
         </div>
 
         {/* 右侧物品列表 */}
@@ -989,8 +1070,7 @@ const chartVariants = {
             </motion.div>
 
             <div className="w-full">
-              <AnimatePresence mode="wait">
-                <TabsContent value="all">
+              <TabsContent value="all">
                   <motion.div
                     key={`all-items-${animationKey}`}
                     variants={containerVariants}
@@ -1000,7 +1080,7 @@ const chartVariants = {
                     className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
                   >
                     {filterAndSortItems(data.item_count).map(([name, count], index) => (
-                      <motion.div key={name} variants={itemVariants}>
+                      <motion.div key={name} >
                         <ItemCard
                           name={name}
                           count={count}
@@ -1023,7 +1103,7 @@ const chartVariants = {
                       className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
                     >
                       {filterAndSortItems(items).map(([name, count], index) => (
-                        <motion.div key={name} variants={itemVariants}>
+                        <motion.div key={name} >
                           <ItemCard
                             name={name}
                             count={count}
@@ -1035,7 +1115,6 @@ const chartVariants = {
                     </motion.div>
                   </TabsContent>
                 ))}
-              </AnimatePresence>
             </div>
           </Tabs>
         </div>

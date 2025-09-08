@@ -6,11 +6,10 @@ import subprocess
 import sys
 from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory
-import time
 import threading
 import argparse
 import pandas as pd
-
+import time  # 在启动浏览器的时候有一个sleep
 
 
 # 配置日志
@@ -21,8 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger('BetterGI初始化')
 
-# 全局变量
-script_dir = os.path.dirname(os.path.abspath(__file__))
+
 
 # 获取启动参数
 parser = argparse.ArgumentParser(description='参量质变仪，用于解析BetterGI日志。')
@@ -130,7 +128,11 @@ duration_dataframe = pd.DataFrame(columns=['日期', '持续时间（秒）'])
 log_list = None
 # 预编译正则表达式
 LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)')
-
+# 文件保存地址
+# 全局变量-当前app.py所在的文件夹路径（不含自己）
+script_dir = app.root_path
+FILE_SAVE_PATH = os.path.join(script_dir, 'files')
+os.makedirs(FILE_SAVE_PATH, exist_ok=True)
 
 def format_timedelta(seconds):
     """
@@ -440,6 +442,63 @@ def item_history():
     return analyse_all_items()
 
 
+@app.route('/api/data-save', methods=['GET'])
+def data_save():
+    """
+    将数据保存到本地后，返回下载地址
+    保存文件类型的请求参数type：[csv/excel/json/html/xml/pickle]，默认csv
+    """
+    global duration_dataframe, item_dataframe, FILE_SAVE_PATH
+    if not os.path.exists(FILE_SAVE_PATH):
+        os.mkdir(FILE_SAVE_PATH)
+    if duration_dataframe.empty or item_dataframe.empty:
+        return jsonify({'error': '数据为空'})
+
+    save_type = request.args.get('type', 'csv')
+    match save_type:
+        case 'csv':
+            duration_dataframe.to_csv(os.path.join(FILE_SAVE_PATH, 'date.csv'), index=False)
+            item_dataframe.to_csv(os.path.join(FILE_SAVE_PATH, 'item.csv'), index=False)
+            return jsonify({'date': f'/api/data-download?file=date.csv', 'item': f'/api/data-download?file=item.csv'})
+        case 'excel':
+            duration_dataframe.to_excel(os.path.join(FILE_SAVE_PATH, 'date.xlsx'), index=False)
+            item_dataframe.to_excel(os.path.join(FILE_SAVE_PATH, 'item.xlsx'), index=False)
+            return jsonify({'date': f'/api/data-download?file=date.xlsx', 'item': f'/api/data-download?file=item.xlsx'})
+        case 'json':
+            duration_dataframe.to_json(os.path.join(FILE_SAVE_PATH, 'date.json'), orient='records')
+            item_dataframe.to_json(os.path.join(FILE_SAVE_PATH, 'item.json'), orient='records')
+            return jsonify({'date': f'/api/data-download?file=date.json', 'item': f'/api/data-download?file=item.json'})
+        case 'html':
+            duration_dataframe.to_html(os.path.join(FILE_SAVE_PATH, 'date.html'), index=False)
+            item_dataframe.to_html(os.path.join(FILE_SAVE_PATH, 'item.html'), index=False)
+            return jsonify({'date': f'/api/data-download?file=date.html', 'item': f'/api/data-download?file=item.html'})
+        case 'xml':
+            duration_dataframe.to_xml(os.path.join(FILE_SAVE_PATH, 'date.xml'),index=False)
+            item_dataframe.to_xml(os.path.join(FILE_SAVE_PATH, 'item.xml'),index=False)
+            return jsonify({'date': f'/api/data-download?file=date.xml', 'item': f'/api/data-download?file=item.xml'})
+        case 'pickle':
+            duration_dataframe.to_pickle(os.path.join(FILE_SAVE_PATH, 'date.pkl'))
+            item_dataframe.to_pickle(os.path.join(FILE_SAVE_PATH, 'item.pkl'))
+            return jsonify({'date': f'/api/data-download?file=date.pkl', 'item': f'/api/data-download?file=item.pkl'})
+        case _:
+            return jsonify({'error': '不支持的文件类型'})
+
+@app.route('/api/data-download', methods=['GET'])
+def data_download():
+    """
+    返回下载文件
+    """
+    try:
+        file_name = request.args.get('file', '')
+        return send_from_directory(
+            directory=FILE_SAVE_PATH,
+            path=file_name,
+            as_attachment=True
+        )
+    except FileNotFoundError:
+        return "文件不存在", 404
+
+
 def analyse_all_logs():
     """
     【要求已经分析过日志】分析所有日志文件并汇总结果
@@ -542,13 +601,13 @@ def analyse_all_items():
 if __name__ == "__main__":
     import time
 
-    t1 = time.time()
-    log_list = get_log_list()
+    # t1 = time.time()
+    # log_list = get_log_list()
     # with app.app_context():
     #     analyse_duration_history()
-    t2 = time.time()
-    print(t2 - t1, 's')
+    # t2 = time.time()
+    # print(t2 - t1, 's')
 
     # log_list = get_log_list()
 
-    # app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
