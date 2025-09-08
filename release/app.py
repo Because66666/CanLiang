@@ -1,4 +1,3 @@
-import importlib.util
 import os.path
 import os
 import re
@@ -7,12 +6,10 @@ import subprocess
 import sys
 from typing import Optional
 from flask import Flask, jsonify, request, send_from_directory
-from datetime import datetime
 import time
 import threading
 import argparse
 import pandas as pd
-
 
 
 
@@ -131,6 +128,8 @@ FORBIDDEN_ITEMS = ['调查', '直接拾取']
 item_dataframe = pd.DataFrame(columns=['物品名称', '时间', '日期'])
 duration_dataframe = pd.DataFrame(columns=['日期', '持续时间（秒）'])
 log_list = None
+# 预编译正则表达式
+LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)')
 
 
 def format_timedelta(seconds):
@@ -160,6 +159,21 @@ def format_timedelta(seconds):
     return ''.join(parts) if parts else "0分钟"
 
 
+def parse_timestamp_to_seconds(timestamp):
+    """
+    将时间戳字符串直接转换为当日的总秒数
+    格式: "04:10:02.395" -> 14402.395
+    """
+    parts = timestamp.split(':')
+    hours = int(parts[0])
+    minutes = int(parts[1])
+    seconds_parts = parts[2].split('.')
+    seconds = int(seconds_parts[0])
+    milliseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
+
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+
+
 def parse_log(log_content, date_str):
     """
     解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -173,8 +187,7 @@ def parse_log(log_content, date_str):
         dict: 包含解析结果的字典
     """
     global item_dataframe, duration_dataframe
-    log_pattern = r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)'
-    matches = re.findall(log_pattern, log_content)
+    matches = LOG_PATTERN.findall(log_content)
 
     # type_count = {}
     # interaction_items = []
@@ -191,20 +204,17 @@ def parse_log(log_content, date_str):
 
     for match in matches:
         timestamp = match[0]  # 时间戳
-        level = match[1]  # 日志级别
-        log_type = match[2]  # 类名
+        # level = match[1]  # 日志级别
+        # log_type = match[2]  # 类名
         details = match[3].strip()  # 日志内容文本
 
         # 过滤禁用的关键词
         if any(keyword in details for keyword in FORBIDDEN_ITEMS):
             continue
-        
-        # 转换时间戳
-        current_time = datetime.strptime(timestamp, '%H:%M:%S.%f')
-        
-        # 类型统计
+            # 类型统计
         # type_count[log_type] = type_count.get(log_type, 0) + 1
-
+        # 转换时间戳
+        current_time = parse_timestamp_to_seconds(timestamp)
         # 提取拾取内容
         if '交互或拾取' in details:
             item = details.split('：')[1].strip('"')
@@ -231,14 +241,15 @@ def parse_log(log_content, date_str):
             current_end = current_time
         else:
             # 计算与上一个有效时间的间隔
-            delta = (current_time - current_end).total_seconds()
+            delta = int(current_time - current_end)
             if delta <= 300:
                 # 表明是连续的事件，更新结束时间
                 current_end = current_time
             else:
                 # 表明是一段新的事件
                 if delta <= 0:
-                    logger.critical(f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
+                    logger.critical(
+                        f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
                 else:
                     # 累加持续时间
                     duration += int(delta)
@@ -248,9 +259,8 @@ def parse_log(log_content, date_str):
 
     # 处理最后一段时间
     if current_start and current_end and current_start != current_end:
-        delta = (current_end - current_start).total_seconds()
+        delta = int(current_end - current_start)
         duration += int(delta)
-
 
     return {
         # 'type_count': type_count,
@@ -286,7 +296,7 @@ def read_log_file(file_path, date_str):
 
 def get_log_list():
     """
-    获取日志文件列表，并过滤掉不包含交互物品的日志文件。
+    获取日志文件列表，并过滤掉不包含交互物品的日志文件。写入duration_dataframe, item_dataframe两个全局变量
 
     Returns:
         list: 过滤后的日志文件名列表
@@ -309,8 +319,11 @@ def get_log_list():
     for file in log_files:
         file_path = os.path.join(BGI_LOG_DIR, f"better-genshin-impact{file}.log")
         result = read_log_file(file_path, file)
-
+        if not result:
+            # 如果结果为空
+            continue
         if "error" in result:
+            logger.error(f"发生错误:{result['error']}")
             continue
 
         # 过滤掉不需要的物品
@@ -324,9 +337,9 @@ def get_log_list():
             filtered_logs.append(file)
             duration_dict['日期'].append(file)
             duration_dict['持续时间（秒）'].append(result['duration'])
-            cached_dict['物品名称'].extend(result['cache_dict']['物品名称'])
-            cached_dict['时间'].extend(result['cache_dict']['时间'])
-            cached_dict['日期'].extend(result['cache_dict']['日期'])
+            cached_dict['物品名称'] += result['cache_dict']['物品名称']
+            cached_dict['时间'] += result['cache_dict']['时间']
+            cached_dict['日期'] += result['cache_dict']['日期']
     global duration_dataframe, item_dataframe
     duration_dataframe = pd.DataFrame(duration_dict)
     item_dataframe = pd.DataFrame(cached_dict)
@@ -429,7 +442,7 @@ def item_history():
 
 def analyse_all_logs():
     """
-    分析所有日志文件并汇总结果
+    【要求已经分析过日志】分析所有日志文件并汇总结果
 
     Returns:
         JSON: 包含所有日志分析结果的JSON响应
@@ -446,7 +459,7 @@ def analyse_all_logs():
 
 def analyse_single_log(date):
     """
-    分析单个日志文件
+    【要求已经分析过日志】分析单个日志文件
 
     Args:
         date: 日志日期
@@ -455,6 +468,8 @@ def analyse_single_log(date):
         JSON: 包含单个日志分析结果的JSON响应
     """
     # 筛选特定日期的数据
+    if item_dataframe.empty or duration_dataframe.empty:
+        return jsonify({'duration': '0分钟', 'item_count': {}})
     filtered_item_df = item_dataframe[item_dataframe['日期'] == date]
     filtered_duration_df = duration_dataframe[duration_dataframe['日期'] == date]
     if filtered_duration_df.empty or filtered_item_df.empty:
@@ -469,7 +484,7 @@ def analyse_single_log(date):
 
 def analyse_item_history(item_name):
     """
-    分析物品历史数据
+    【要求已经分析过日志】分析物品历史数据
 
     Args:
         item_name: 物品名称
@@ -488,6 +503,13 @@ def analyse_item_history(item_name):
 
 
 def analyse_duration_history():
+    """
+    【要求已经分析过日志】分析每日BGI运行时间历史数据
+
+
+    Returns:
+        JSON: 包含每日BGI运行时间历史数据的JSON响应
+    """
     if duration_dataframe.empty:
         return jsonify({'msg': 'no data.'})
     # 按日期分组并计算总持续时间（秒）
@@ -502,6 +524,12 @@ def analyse_duration_history():
 
 
 def analyse_all_items():
+    """
+    【要求已经分析过日志】分析所有日志中，每天的拾取物品数量。
+
+    Returns:
+        JSON: 包含所有日志中，每天的拾取物品数量的JSON响应
+    """
     if item_dataframe.empty:
         return jsonify({'msg': 'no data.'})
     data_counts = item_dataframe['日期'].value_counts().to_dict()
@@ -512,15 +540,15 @@ def analyse_all_items():
 
 # 启动Flask应用
 if __name__ == "__main__":
-    # import time
-    #
-    # t1 = time.time()
-    # log_list = get_log_list()
+    import time
+
+    t1 = time.time()
+    log_list = get_log_list()
     # with app.app_context():
     #     analyse_duration_history()
-    #     t2 = time.time()
-    #     print(t2 - t1, 's')
+    t2 = time.time()
+    print(t2 - t1, 's')
 
     # log_list = get_log_list()
 
-    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
+    # app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
