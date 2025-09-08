@@ -451,43 +451,8 @@ export default function InventoryPage() {
     let category = getCategory(name)
     return categoryColors[category as keyof typeof categoryColors]
   }
- // 动画变体
- const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.3,
-      when: "beforeChildren",
-      staggerChildren: 0.1,
-    },
-  },
-  exit: {
-    opacity: 0,
-    transition: {
-      duration: 0.3,
-      when: "afterChildren",
-      staggerChildren: 0.05,
-      staggerDirection: -1,
-    },
-  },
-}
 
 
-
-const chartVariants = {
-  hidden: { scale: 0.9, opacity: 0 },
-  visible: {
-    scale: 1,
-    opacity: 1,
-    transition: { duration: 0.4, type: "spring", stiffness: 100 },
-  },
-  exit: {
-    scale: 0.9,
-    opacity: 0,
-    transition: { duration: 0.3 },
-  },
-}
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -716,21 +681,15 @@ const chartVariants = {
           </motion.div>
       )}
 
-      <motion.h1
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
+      <div
         className="mb-8 text-3xl font-bold text-center"
         style={{ color: colors.secondary }}
       >
         参量质变仪
-      </motion.h1>
+      </div>
 
       {/* 统计卡片 */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+      <div
         className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3"
       >
         <motion.div>
@@ -800,7 +759,7 @@ const chartVariants = {
             </CardContent>
           </Card>
         </motion.div>
-      </motion.div>
+      </div>
 
       {/* 主要内容区域 - 分为左侧条形图和右侧物品列表 */}
       <div className="flex flex-col lg:flex-row gap-8">
@@ -809,10 +768,6 @@ const chartVariants = {
           {/* 饼状图 */}
           <motion.div
               key={`pie-chart-${animationKey}`}
-              variants={chartVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
             >
               <Card className="border-0 shadow-sm overflow-hidden">
                 <CardContent className="p-6">
@@ -822,8 +777,8 @@ const chartVariants = {
                   <div className="flex flex-col items-center">
                     <motion.div
                       className="relative w-[200px] h-[200px]"
-                      initial={{ rotate: -90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
+                      initial={{ rotate: -90 }}
+                      animate={{ rotate: 0}}
                       transition={{ duration: 0.8, type: "spring" }}
                     >
                       <svg viewBox="0 0 200 200" className="w-full h-full">
@@ -919,10 +874,6 @@ const chartVariants = {
           {/* 条形图 */}
           <motion.div
               key={`bar-chart-${animationKey}`}
-              variants={chartVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
             >
               <Card className="border-0 shadow-sm overflow-hidden">
                 <CardContent className="p-6">
@@ -965,9 +916,6 @@ const chartVariants = {
         <div className="w-full lg:w-2/3">
           {/* 搜索和日期选择区域 */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
             className="mb-8 p-6 rounded-lg"
             style={{ backgroundColor: colors.light }}
           >
@@ -1071,12 +1019,8 @@ const chartVariants = {
 
             <div className="w-full">
               <TabsContent value="all">
-                  <motion.div
+                  <div
                     key={`all-items-${animationKey}`}
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
                     className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
                   >
                     {filterAndSortItems(data.item_count).map(([name, count], index) => (
@@ -1089,17 +1033,13 @@ const chartVariants = {
                         />
                       </motion.div>
                     ))}
-                  </motion.div>
+                  </div>
                 </TabsContent>
 
                 {Object.entries(categories).map(([category, items]) => (
                   <TabsContent key={category} value={category}>
-                    <motion.div
+                    <div
                       key={`${category}-items-${animationKey}`}
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
                       className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
                     >
                       {filterAndSortItems(items).map(([name, count], index) => (
@@ -1112,7 +1052,7 @@ const chartVariants = {
                           />
                         </motion.div>
                       ))}
-                    </motion.div>
+                    </div>
                   </TabsContent>
                 ))}
             </div>
