@@ -18,7 +18,9 @@
 
 
 ### 致谢提交PR的合作开发者
-- [xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2  
+- [xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2
+
+### 致谢提交Issues的关注者
 - [crazysmile-PhD](https://github.com/crazysmile-PhD)，提交了 https://github.com/Because66666/CanLiang/issues/4
 
 ## 系统要求
