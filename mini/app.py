@@ -4,7 +4,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from dotenv import load_dotenv
 import pandas as pd
 import logging
-
+from flask_cors import CORS
 # 加载环境变量
 load_dotenv()
 # 配置日志
@@ -19,13 +19,20 @@ BGI_LOG_DIR = os.path.join(os.getenv('BETTERGI_PATH'), 'log')
 
 # 创建Flask应用实例，设置静态文件夹路径为'static'
 app = Flask(__name__, static_folder='static')
+# 测试前端的时候，使用CORS
+CORS(app)
 
 # ---------------------之后更新的内容粘贴到这里---------------------
 
 # 需要过滤的物品列表
 FORBIDDEN_ITEMS = ['调查', '直接拾取']
-item_dataframe = pd.DataFrame(columns=['物品名称', '时间', '日期'])
-duration_dataframe = pd.DataFrame(columns=['日期', '持续时间（秒）'])
+item_cached_list = []  # 用于替代原有的筛选功能，避免物品的重复记录。
+item_datadict = {
+    '物品名称': [], '时间': [], '日期': []
+}
+duration_datadict = {
+    '日期': [], '持续时间': []
+}
 log_list = None
 # 预编译正则表达式
 LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)')
@@ -34,6 +41,7 @@ LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)')
 script_dir = app.root_path
 FILE_SAVE_PATH = os.path.join(script_dir, 'files')
 os.makedirs(FILE_SAVE_PATH, exist_ok=True)
+
 
 def format_timedelta(seconds):
     """
@@ -77,6 +85,21 @@ def parse_timestamp_to_seconds(timestamp):
     return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
 
 
+def check_dict_empty(dictionary: dict[str:list]) -> bool:
+    """
+     提供一个方法，判断自定义的字典数据结构是否有误或者为空。有误则抛出错误，
+     返回True：为空
+     返回False：不为空。
+    """
+    lengths = {len(lst) for lst in dictionary.values()}
+    if len(lengths) > 1:
+        # 说明长度不一致
+        raise Exception(f"字典数据结构有误，请检查数据结构。对应的长度有{lengths}")
+    if lengths == {0}:
+        return True
+    else:
+        return False
+
 def parse_log(log_content, date_str):
     """
     解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -89,7 +112,7 @@ def parse_log(log_content, date_str):
     Returns:
         dict: 包含解析结果的字典
     """
-    global item_dataframe, duration_dataframe
+    global item_datadict, duration_datadict
     matches = LOG_PATTERN.findall(log_content)
 
     # type_count = {}
@@ -125,17 +148,14 @@ def parse_log(log_content, date_str):
             item_count[item] = item_count.get(item, 0) + 1
 
             # 检查是否存在匹配的行
-            existing_row = item_dataframe[
-                (item_dataframe['物品名称'] == item) &
-                (item_dataframe['时间'] == timestamp) &
-                (item_dataframe['日期'] == date_str)
-                ]
+            existing_row = f'{item}{timestamp}{date_str}' in item_cached_list
 
             # 如果不存在匹配的行，则添加新行
-            if existing_row.empty:
+            if not existing_row:
                 cache_dict['物品名称'].append(item)
                 cache_dict['时间'].append(timestamp)
                 cache_dict['日期'].append(date_str)
+                item_cached_list.append(f'{item}{timestamp}{date_str}')
 
         # 处理时间段
         if not current_start:
@@ -199,7 +219,7 @@ def read_log_file(file_path, date_str):
 
 def get_log_list():
     """
-    获取日志文件列表，并过滤掉不包含交互物品的日志文件。写入duration_dataframe, item_dataframe两个全局变量
+    获取日志文件列表，并过滤掉不包含交互物品的日志文件。写入duration_datadict, item_datadict两个全局变量
 
     Returns:
         list: 过滤后的日志文件名列表
@@ -212,7 +232,7 @@ def get_log_list():
     filtered_logs = []
     duration_dict = {
         '日期': [],
-        '持续时间（秒）': []
+        '持续时间': []
     }
     cached_dict = {
         '物品名称': [],
@@ -239,13 +259,13 @@ def get_log_list():
         if items:
             filtered_logs.append(file)
             duration_dict['日期'].append(file)
-            duration_dict['持续时间（秒）'].append(result['duration'])
+            duration_dict['持续时间'].append(result['duration'])
             cached_dict['物品名称'] += result['cache_dict']['物品名称']
             cached_dict['时间'] += result['cache_dict']['时间']
             cached_dict['日期'] += result['cache_dict']['日期']
-    global duration_dataframe, item_dataframe
-    duration_dataframe = pd.DataFrame(duration_dict)
-    item_dataframe = pd.DataFrame(cached_dict)
+    global duration_datadict, item_datadict
+    duration_datadict = duration_dict
+    item_datadict = cached_dict
     return filtered_logs
 
 
@@ -281,221 +301,25 @@ def get_log_list_api():
     return jsonify({'list': log_list})
 
 
-@app.route('/api/analyse', methods=['GET'])
+@app.route('/api/LogData', methods=['GET'])
 def analyse_log():
     """
-    提供日志分析的API接口，返回指定日期的日志分析结果。
-    请求参数:date='all'
-    如果没有all，则返回单个日期的数据。
+    提供日志分析的API接口，默认返回所有的数据，分析交给前端进行。
+
     Returns:
         JSON: 包含日志分析结果的JSON响应。例如：{
-        'duration': string,
-        'item_count': {item_name:int}
+        'duration': duration_dict,
+        'item': item_dict
     }
     """
-    date = request.args.get('date', 'all')
+    if check_dict_empty(duration_datadict) or check_dict_empty(item_datadict):
+        get_log_list()
 
-    if date == 'all':
-        return analyse_all_logs()
-    else:
-        return analyse_single_log(date)
-
-
-@app.route('/api/item-trend', methods=['GET'])
-def item_trend():
-    """
-    返回单个物品的历史记录。
-
-    Returns:
-        JSON: 格式：{
-        'data': {‘date':int}
-    }
-    """
-    item_name = request.args.get('item', '')
-    if item_name:
-        return analyse_item_history(item_name)
-    return jsonify({})
-
-
-@app.route('/api/duration-trend', methods=['GET'])
-def duration_trend():
-    """
-    返回所有日志中，每天的BGI持续运行时间。
-
-    Returns:
-        JSON: 格式：{
-        'data': {‘date':int}
-    }
-    """
-    return analyse_duration_history()
-
-
-@app.route('/api/total-items-trend', methods=['GET'])
-def item_history():
-    """
-    返回所有日志中，拾取每天拾取总物品的数量。
-
-    Returns:
-        JSON: 格式：{
-        'data': {‘date':int}
-    }
-    """
-    return analyse_all_items()
-
-
-@app.route('/api/data-save', methods=['GET'])
-def data_save():
-    """
-    将数据保存到本地后，返回下载地址
-    保存文件类型的请求参数type：[csv/excel/json/html/xml/pickle]，默认csv
-    """
-    global duration_dataframe, item_dataframe, FILE_SAVE_PATH
-    if not os.path.exists(FILE_SAVE_PATH):
-        os.mkdir(FILE_SAVE_PATH)
-    if duration_dataframe.empty or item_dataframe.empty:
-        return jsonify({'error': '数据为空'})
-
-    save_type = request.args.get('type', 'csv')
-    match save_type:
-        case 'csv':
-            duration_dataframe.to_csv(os.path.join(FILE_SAVE_PATH, 'date.csv'), index=False)
-            item_dataframe.to_csv(os.path.join(FILE_SAVE_PATH, 'item.csv'), index=False)
-            return jsonify({'date': f'/api/data-download?file=date.csv', 'item': f'/api/data-download?file=item.csv'})
-        case 'excel':
-            duration_dataframe.to_excel(os.path.join(FILE_SAVE_PATH, 'date.xlsx'), index=False)
-            item_dataframe.to_excel(os.path.join(FILE_SAVE_PATH, 'item.xlsx'), index=False)
-            return jsonify({'date': f'/api/data-download?file=date.xlsx', 'item': f'/api/data-download?file=item.xlsx'})
-        case 'json':
-            duration_dataframe.to_json(os.path.join(FILE_SAVE_PATH, 'date.json'), orient='records')
-            item_dataframe.to_json(os.path.join(FILE_SAVE_PATH, 'item.json'), orient='records')
-            return jsonify({'date': f'/api/data-download?file=date.json', 'item': f'/api/data-download?file=item.json'})
-        case 'html':
-            duration_dataframe.to_html(os.path.join(FILE_SAVE_PATH, 'date.html'), index=False)
-            item_dataframe.to_html(os.path.join(FILE_SAVE_PATH, 'item.html'), index=False)
-            return jsonify({'date': f'/api/data-download?file=date.html', 'item': f'/api/data-download?file=item.html'})
-        case 'xml':
-            duration_dataframe.to_xml(os.path.join(FILE_SAVE_PATH, 'date.xml'),index=False)
-            item_dataframe.to_xml(os.path.join(FILE_SAVE_PATH, 'item.xml'),index=False)
-            return jsonify({'date': f'/api/data-download?file=date.xml', 'item': f'/api/data-download?file=item.xml'})
-        case 'pickle':
-            duration_dataframe.to_pickle(os.path.join(FILE_SAVE_PATH, 'date.pkl'))
-            item_dataframe.to_pickle(os.path.join(FILE_SAVE_PATH, 'item.pkl'))
-            return jsonify({'date': f'/api/data-download?file=date.pkl', 'item': f'/api/data-download?file=item.pkl'})
-        case _:
-            return jsonify({'error': '不支持的文件类型'})
-
-@app.route('/api/data-download', methods=['GET'])
-def data_download():
-    """
-    返回下载文件
-    """
-    try:
-        file_name = request.args.get('file', '')
-        return send_from_directory(
-            directory=FILE_SAVE_PATH,
-            path=file_name,
-            as_attachment=True
-        )
-    except FileNotFoundError:
-        return "文件不存在", 404
-
-
-def analyse_all_logs():
-    """
-    【要求已经分析过日志】分析所有日志文件并汇总结果
-
-    Returns:
-        JSON: 包含所有日志分析结果的JSON响应
-    """
-    if duration_dataframe.empty or item_dataframe.empty:
-        return jsonify({'duration': '0分钟', 'item_count': {}})
-    total_duration = duration_dataframe['持续时间（秒）'].sum()
-    total_item_count = item_dataframe['物品名称'].value_counts().to_dict()
     return jsonify({
-        'duration': format_timedelta(total_duration),
-        'item_count': total_item_count
+        'duration': duration_datadict,
+        'item': item_datadict
     })
 
-
-def analyse_single_log(date):
-    """
-    【要求已经分析过日志】分析单个日志文件
-
-    Args:
-        date: 日志日期
-
-    Returns:
-        JSON: 包含单个日志分析结果的JSON响应
-    """
-    # 筛选特定日期的数据
-    if item_dataframe.empty or duration_dataframe.empty:
-        return jsonify({'duration': '0分钟', 'item_count': {}})
-    filtered_item_df = item_dataframe[item_dataframe['日期'] == date]
-    filtered_duration_df = duration_dataframe[duration_dataframe['日期'] == date]
-    if filtered_duration_df.empty or filtered_item_df.empty:
-        return jsonify({'duration': '0分钟', 'item_count': {}})
-    total_duration = filtered_duration_df['持续时间（秒）'].sum()
-    total_item_count = filtered_item_df['物品名称'].value_counts().to_dict()
-    return jsonify({
-        'duration': format_timedelta(total_duration),
-        'item_count': total_item_count
-    })
-
-
-def analyse_item_history(item_name):
-    """
-    【要求已经分析过日志】分析物品历史数据
-
-    Args:
-        item_name: 物品名称
-
-    Returns:
-        JSON: 包含物品历史数据的JSON响应
-    """
-    if item_dataframe.empty:
-        return jsonify({'msg': 'no data.'})
-    filter_dataframe = item_dataframe[item_dataframe['物品名称'] == item_name]
-    # 统计每个日期的数量
-    data_counts = filter_dataframe['日期'].value_counts().to_dict()
-    return jsonify({
-        'data': data_counts
-    })
-
-
-def analyse_duration_history():
-    """
-    【要求已经分析过日志】分析每日BGI运行时间历史数据
-
-
-    Returns:
-        JSON: 包含每日BGI运行时间历史数据的JSON响应
-    """
-    if duration_dataframe.empty:
-        return jsonify({'msg': 'no data.'})
-    # 按日期分组并计算总持续时间（秒）
-    total_seconds = duration_dataframe.groupby(duration_dataframe['日期'])['持续时间（秒）'].sum()
-
-    # 转换为小时并保留一位小数
-    total_minutes = (total_seconds // 60).astype(int)
-    data_counts = total_minutes.to_dict()
-    return jsonify({
-        'data': data_counts
-    })
-
-
-def analyse_all_items():
-    """
-    【要求已经分析过日志】分析所有日志中，每天的拾取物品数量。
-
-    Returns:
-        JSON: 包含所有日志中，每天的拾取物品数量的JSON响应
-    """
-    if item_dataframe.empty:
-        return jsonify({'msg': 'no data.'})
-    data_counts = item_dataframe['日期'].value_counts().to_dict()
-    return jsonify({
-        'data': data_counts
-    })
 
 
 # 启动Flask应用
@@ -511,4 +335,4 @@ if __name__ == "__main__":
 
     # log_list = get_log_list()
 
-    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=3001, use_reloader=False)
