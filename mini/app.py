@@ -28,14 +28,15 @@ CORS(app)
 FORBIDDEN_ITEMS = ['调查', '直接拾取']
 item_cached_list = []  # 用于替代原有的筛选功能，避免物品的重复记录。
 item_datadict = {
-    '物品名称': [], '时间': [], '日期': []
+    '物品名称': [], '时间': [], '日期': [], '归属配置组': []
 }
 duration_datadict = {
     '日期': [], '持续时间': []
 }
 log_list = None
 # 预编译正则表达式
-LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)')
+LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)') # 匹配日支行
+TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 # 文件保存地址
 # 全局变量-当前app.py所在的文件夹路径（不含自己）
 script_dir = app.root_path
@@ -122,12 +123,14 @@ def parse_log(log_content, date_str):
     cache_dict = {
         '物品名称': [],
         '时间': [],
-        '日期': []
+        '日期': [],
+        '归属配置组': []
     }
 
     current_start = None  # 当前段开始时间
     current_end = None
 
+    current_task = None # 当前运行的配置组
     for match in matches:
         timestamp = match[0]  # 时间戳
         # level = match[1]  # 日志级别
@@ -139,6 +142,17 @@ def parse_log(log_content, date_str):
             continue
             # 类型统计
         # type_count[log_type] = type_count.get(log_type, 0) + 1
+
+        # 匹配配置组开始
+        task_matches = TASK_BEGIN_PATTERN.match(details)
+        if task_matches:
+            current_task = task_matches.group(1)
+        # 匹配配置组结束
+        if not current_task:
+            if f'配置组 "{current_task}" 执行结束' in details:
+                current_task = None
+
+
         # 转换时间戳
         current_time = parse_timestamp_to_seconds(timestamp)
         # 提取拾取内容
@@ -148,14 +162,15 @@ def parse_log(log_content, date_str):
             item_count[item] = item_count.get(item, 0) + 1
 
             # 检查是否存在匹配的行
-            existing_row = f'{item}{timestamp}{date_str}' in item_cached_list
+            existing_row = f'{item}{timestamp}{date_str}{current_task}' in item_cached_list
 
             # 如果不存在匹配的行，则添加新行
             if not existing_row:
                 cache_dict['物品名称'].append(item)
                 cache_dict['时间'].append(timestamp)
                 cache_dict['日期'].append(date_str)
-                item_cached_list.append(f'{item}{timestamp}{date_str}')
+                cache_dict['归属配置组'].append(str(current_task))
+                item_cached_list.append(f'{item}{timestamp}{date_str}{current_task}')
 
         # 处理时间段
         if not current_start:
@@ -237,7 +252,8 @@ def get_log_list():
     cached_dict = {
         '物品名称': [],
         '时间': [],
-        '日期': []
+        '日期': [],
+        '归属配置组': []
     }
     for file in log_files:
         file_path = os.path.join(BGI_LOG_DIR, f"better-genshin-impact{file}.log")
@@ -263,6 +279,7 @@ def get_log_list():
             cached_dict['物品名称'] += result['cache_dict']['物品名称']
             cached_dict['时间'] += result['cache_dict']['时间']
             cached_dict['日期'] += result['cache_dict']['日期']
+            cached_dict['归属配置组'] += result['cache_dict']['归属配置组']
     global duration_datadict, item_datadict
     duration_datadict = duration_dict
     item_datadict = cached_dict
@@ -335,4 +352,9 @@ if __name__ == "__main__":
 
     # log_list = get_log_list()
 
-    app.run(debug=False, host='0.0.0.0', port=3001, use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
+
+    # with open('1.log','r',encoding='utf-8') as e:
+    #     a = e.read()
+    # data = parse_log(a,'20250401')
+    # print(data)

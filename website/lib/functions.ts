@@ -3,31 +3,96 @@ import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict } fr
 import * as XLSX from 'xlsx'
 
 class AnalysisFunctions {
-  // 筛选指定日期的物品数据和时长数据
-  calculateItemTrend(itemData: ItemDataDict, durationData: DurationDict, selectedDate: string): InventoryData {
+  // 筛选指定日期和指定配置组的物品数据和时长数据
+  calculateItemTrend(itemData: ItemDataDict, 
+    durationData: DurationDict, 
+    selectedDate: string, 
+    selectedTask: string): { processedData: InventoryData; filteredData: ItemDataDict } {
         let filteredItemCount: Record<string, number> = {}
         let totalDuration = 0
         
+        // 创建临时的ItemDataDict存储筛选数据
+        let tempItemData: ItemDataDict = {
+          ItemName: [],
+          Task: [],
+          TimeStamp: [],
+          Date: []
+        }
+
+        // 第一步：用selectedDate筛选数据
         if (selectedDate === 'all') {
-          // 如果是'all'，统计所有数据
-          itemData.ItemName.forEach((itemName) => {
-            filteredItemCount[itemName] = (filteredItemCount[itemName] || 0) + 1
-          })
-          totalDuration = durationData.Duration.reduce((sum, duration) => sum + duration, 0)
+          // 如果是'all'，复制所有数据
+          tempItemData = {
+            ItemName: [...itemData.ItemName],
+            Task: [...itemData.Task],
+            TimeStamp: [...itemData.TimeStamp],
+            Date: [...itemData.Date]
+          }
         } else {
           // 筛选指定日期的数据
           itemData.Date.forEach((date, index) => {
             if (date === selectedDate) {
-              const itemName = itemData.ItemName[index]
-              filteredItemCount[itemName] = (filteredItemCount[itemName] || 0) + 1
+              tempItemData.ItemName.push(itemData.ItemName[index])
+              tempItemData.Task.push(itemData.Task[index])
+              tempItemData.TimeStamp.push(itemData.TimeStamp[index])
+              tempItemData.Date.push(itemData.Date[index])
             }
           })
-          
-          durationData.Date.forEach((date, index) => {
-            if (date === selectedDate) {
-              totalDuration += durationData.Duration[index]
+        }
+
+        // 第二步：用selectedTask筛选数据
+        let finalItemData: ItemDataDict = {
+          ItemName: [],
+          Task: [],
+          TimeStamp: [],
+          Date: []
+        }
+
+        if (selectedTask === 'all') {
+          // 如果是'all'，使用第一步筛选的所有数据
+          finalItemData = tempItemData
+        } else {
+          // 筛选指定任务的数据
+          tempItemData.Task.forEach((taskName, index) => {
+            if (taskName === selectedTask) {
+              finalItemData.ItemName.push(tempItemData.ItemName[index])
+              finalItemData.Task.push(tempItemData.Task[index])
+              finalItemData.TimeStamp.push(tempItemData.TimeStamp[index])
+              finalItemData.Date.push(tempItemData.Date[index])
             }
           })
+        }
+
+        // 统计物品数量
+        finalItemData.ItemName.forEach((itemName) => {
+          filteredItemCount[itemName] = (filteredItemCount[itemName] || 0) + 1
+        })
+
+        // 计算duration
+        if (selectedTask === 'all') {
+          // selectedTask为all，按照原有方式计算
+          if (selectedDate === 'all') {
+            totalDuration = durationData.Duration.reduce((sum, duration) => sum + duration, 0)
+          } else {
+            durationData.Date.forEach((date, index) => {
+              if (date === selectedDate) {
+                totalDuration += durationData.Duration[index]
+              }
+            })
+          }
+        } else {
+          // selectedTask不为all，计算时间差
+          if (finalItemData.TimeStamp.length > 0) {
+            const timeStrings = finalItemData.TimeStamp
+            const timeInSeconds = timeStrings.map(timeStr => {
+              const [hours, minutes, seconds] = timeStr.split(':')
+              const [sec, ms] = seconds.split('.')
+              return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec) + parseFloat('0.' + ms)
+            })
+            const maxTime = Math.max(...timeInSeconds)
+            const minTime = Math.min(...timeInSeconds)
+            totalDuration = maxTime - minTime
+          }
         }
         
         // 格式化时长为"x小时y分钟"
@@ -39,8 +104,7 @@ class AnalysisFunctions {
           item_count: filteredItemCount,
           duration: formattedDuration
         }
-
-        return processedData
+        return { processedData, filteredData: finalItemData }
   }
 
   // 计算趋势数据
@@ -108,9 +172,9 @@ class AnalysisFunctions {
   private downloadCSV(itemData: ItemDataDict, durationData: DurationDict, timestamp: string) {
     // 物品数据CSV
     const itemCSV = [
-      'ItemName,TimeStamp,Date',
+      'ItemName,Task,TimeStamp,Date',
       ...itemData.ItemName.map((name, index) => 
-        `"${name}",${itemData.TimeStamp[index]},${itemData.Date[index]}`
+        `"${name}",${itemData.Task[index]},${itemData.TimeStamp[index]},${itemData.Date[index]}`
       )
     ].join('\n')
     
@@ -118,7 +182,7 @@ class AnalysisFunctions {
     const durationCSV = [
       'Date,Duration',
       ...durationData.Date.map((date, index) => 
-        `${date},${durationData.Duration[index]}`
+        `${date},${itemData.Task[index]},${durationData.Duration[index]}`
       )
     ].join('\n')
     
@@ -164,7 +228,7 @@ class AnalysisFunctions {
         </thead>
         <tbody>
             ${itemData.ItemName.map((name, index) => 
-              `<tr><td>${name}</td><td>${itemData.TimeStamp[index]}</td><td>${itemData.Date[index]}</td></tr>`
+              `<tr><td>${name}</td><td>${itemData.Task[index]}</td><td>${itemData.TimeStamp[index]}</td><td>${itemData.Date[index]}</td></tr>`
             ).join('')}
         </tbody>
     </table>
@@ -201,6 +265,13 @@ class AnalysisFunctions {
         </Item>`
         ).join('\n        ')}
     </ItemData>
+    <TaskData>
+        ${itemData.Task.map((task, index) => 
+          `<Task>
+            <Name>${this.escapeXML(task)}</Name>
+        </Task>`
+        ).join('\n        ')}
+    </TaskData>
     <DurationData>
         ${durationData.Date.map((date, index) => 
           `<Duration>
@@ -222,9 +293,10 @@ class AnalysisFunctions {
     
     // 准备物品数据
     const itemSheetData = [
-      ['物品名称', '时间戳', '日期'],
+      ['物品名称','归属配置组', '时间戳', '日期'],
       ...itemData.ItemName.map((name, index) => [
         name,
+        itemData.Task[index],
         itemData.TimeStamp[index],
         itemData.Date[index]
       ])
@@ -232,7 +304,7 @@ class AnalysisFunctions {
     
     // 准备时长数据
     const durationSheetData = [
-      ['日期', '时长(分钟)'],
+      ['日期', '时长(秒)'],
       ...durationData.Date.map((date, index) => [
         date,
         durationData.Duration[index]

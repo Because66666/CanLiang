@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Canliang_v1.0.3',
+    name='Canliang_',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\python\\Analyse_bettergi_log\\CanLiang\\release\\favicon.ico'],
+    icon=['D:\\python\\CanLiang\\release\\favicon.ico'],
 )

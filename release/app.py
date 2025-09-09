@@ -5,7 +5,7 @@ import logging
 import subprocess
 import sys
 from typing import Optional
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 import threading
 import argparse
@@ -431,4 +431,4 @@ if __name__ == "__main__":
 
     # log_list = get_log_list()
 
-    app.run(debug=False, host='0.0.0.0', port=3001, use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)

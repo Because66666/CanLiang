@@ -12,7 +12,8 @@ export interface InventoryData {
  */
 export interface ItemDataDict {
   ItemName: string[]
-  TimeStamp: number[]
+  Task:string[]
+  TimeStamp: string[]
   Date: string[]
 }
 export interface DurationDict {

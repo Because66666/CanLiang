@@ -4,7 +4,7 @@ import { promises } from 'dns'
 import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict } from '../types/inventory'
 
 // API基础配置
-const BASE_URL = 'http://localhost:3001/'
+const BASE_URL = 'http://localhost:3000/'
 
 // API请求封装函数
 class ApiService {
@@ -48,10 +48,10 @@ class ApiService {
       // 转换data.item的字段名映射
       const itemData: ItemDataDict = {
         ItemName: data.item.物品名称 || [],
+        Task: data.item.归属配置组 || [],
         TimeStamp: data.item.时间 || [],
         Date: data.item.日期 || []
       }
-      
       // 转换data.duration的字段名映射
       const durationData: DurationDict = {
         Date: data.duration.日期 || [],

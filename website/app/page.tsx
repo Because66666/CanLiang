@@ -52,9 +52,11 @@ import { DownloadDialog } from "@/components/inventory/DownloadDialog"
 export default function InventoryPage() {
   // 页面状态管理
   const [dateList, setDateList] = useState<DateItem[]>([])
+  const [taskList, setTaskList] = useState<string[]>([])
   const [itemData, setItemData] = useState<ItemDataDict>()
   const [durationData, setDurationData] = useState<DurationDict>()
   const [selectedDate, setSelectedDate] = useState<string>("") 
+  const [selectedTask, setSelectedTask] = useState<string>("")
   const [data, setData] = useState<InventoryData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -143,6 +145,12 @@ export default function InventoryPage() {
         setAnimationKey((prev) => prev + 1) // 更新动画key以触发饼状图重新动画
       }
     }
+  const handleTaskChange = (newTask: string) => {
+    if (newTask !== selectedTask) {
+      setSelectedTask(newTask)
+      setAnimationKey((prev) => prev + 1) // 更新动画key以触发饼状图重新动画
+    }
+  }
 
   // 从API获取日期列表 和 数据表
   useEffect(() => {
@@ -153,15 +161,22 @@ export default function InventoryPage() {
         const result = await apiService.fetchDateList()
         setDateList(result)
         
-        // 设置第一个日期为默认选中日期
-        if (result.length > 0) {
-          setSelectedDate(result[0].value)
-        }
         
         // 关于/api/LogData
         const {itemData,durationData} = await apiService.fetchAllData()
         setItemData(itemData)
         setDurationData(durationData)
+
+        // 设置第一个日期为默认选中日期
+        if (result.length > 0) {
+          setSelectedDate(result[0].value)
+          setSelectedTask('all')
+          // 对应日期下的配置组列表筛选
+          let {processedData, filteredData} = analysistools.calculateItemTrend(itemData, durationData,result[0].value,'all')
+          let task_list = [...new Set(filteredData.Task)]
+          task_list.unshift('all')
+          setTaskList(task_list)
+        }
 
         setError(null)
       } catch (error) {
@@ -177,17 +192,23 @@ export default function InventoryPage() {
 
   const handleSelectAll = () => {
     setSelectedDate('all')  // 设定一个特殊值来表示“全部”
+    setSelectedTask('all')
+    setAnimationKey((prev) => prev + 1) // 更新动画key以触发饼状图重新动画
   }
 
-  // 获取物品数据
+  // 当发生筛选的时候，获取物品数据
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedDate || !itemData || !durationData) return
+      if (!selectedDate ||!itemData || !durationData) return
 
       try {
         setLoading(true)
-        const processedData = analysistools.calculateItemTrend(itemData, durationData, selectedDate)
+        const {processedData, filteredData} = 
+        analysistools.calculateItemTrend(itemData, durationData, selectedDate, selectedTask)
         setData(processedData)
+        let task_list = [...new Set(filteredData.Task)]
+        task_list.unshift('all')
+        setTaskList(task_list)
         setError(null)
       } catch (error) {
         console.error('处理数据失败:', error)
@@ -198,7 +219,7 @@ export default function InventoryPage() {
     }
 
     fetchData()
-  }, [selectedDate, itemData, durationData])
+  }, [selectedDate, selectedTask, itemData, durationData])
 
 
 
@@ -243,7 +264,7 @@ export default function InventoryPage() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.3 }}
         className="fixed top-6 right-6 z-50"
       >
         <motion.a
@@ -277,7 +298,7 @@ export default function InventoryPage() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
+        transition={{ duration: 0.3 }}
         className="fixed top-20 right-6 z-50"
       >
         <DownloadDialog
@@ -448,8 +469,7 @@ export default function InventoryPage() {
                       <motion.div
                         key={index}
                         className="flex flex-col cursor-pointer"
-                        initial={{ x: -20, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
+                        animate={{ x: 0}}
                         transition={{ delay: index * 0.1, duration: 0.3 }}
                         onClick={() => handleItemClick(name)}
                         whileHover={{ scale: 1.02 }}
@@ -497,7 +517,7 @@ export default function InventoryPage() {
                 <div className="relative w-full max-w-md">
                   <Input
                     placeholder="搜索物品..."
-                    className="pl-4 py-3 border-0 shadow-sm focus:ring-2 w-[240px]"
+                    className="pl-4 py-3 border-0 shadow-sm focus:ring-2 w-[200px]"
                     style={{
                       borderColor: colors.lightBorder,
                       boxShadow: `0 0 0 1px ${colors.lightBorder}`,
@@ -518,7 +538,7 @@ export default function InventoryPage() {
                   </div>
                   <Select value={selectedDate} onValueChange={handleDateChange}>
                     <SelectTrigger
-                      className="w-[240px] border-0 shadow-sm focus:ring-2"
+                      className="w-[200px] border-0 shadow-sm focus:ring-2"
                       style={{
                         borderColor: colors.lightBorder,
                         boxShadow: `0 0 0 1px ${colors.lightBorder}`,
@@ -530,6 +550,34 @@ export default function InventoryPage() {
                       {dateList.map((date) => (
                         <SelectItem key={date.value} value={date.value}>
                           {date.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+              </div>
+
+              {/* 配置组选择 */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" style={{ color: colors.primary }} />
+                    <span className="text-sm" style={{ color: colors.secondary }}>
+                      选择配置组:
+                    </span>
+                  </div>
+                  <Select value={selectedTask} onValueChange={handleTaskChange}>
+                    <SelectTrigger
+                      className="w-[200px] border-0 shadow-sm focus:ring-2"
+                      style={{
+                        borderColor: colors.lightBorder,
+                        boxShadow: `0 0 0 1px ${colors.lightBorder}`,
+                      }}
+                    >
+                      <SelectValue placeholder="all" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {taskList.map((task) => (
+                        <SelectItem key={task} value={task}>
+                          {task}
                         </SelectItem>
                       ))}
                     </SelectContent>
