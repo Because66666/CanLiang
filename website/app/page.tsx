@@ -203,12 +203,29 @@ export default function InventoryPage() {
 
       try {
         setLoading(true)
-        const {processedData, filteredData} = 
-        analysistools.calculateItemTrend(itemData, durationData, selectedDate, selectedTask)
+        let {processedData, filteredData} = 
+        analysistools.calculateItemTrend(itemData, durationData, selectedDate, selectedTask)      
+        // 检查item_count是否为空
+        if (!processedData.item_count || Object.keys(processedData.item_count).length === 0) {
+          console.log('警告：processedData的item_count记录为空')
+          let {processedData, filteredData} = 
+        analysistools.calculateItemTrend(itemData, durationData, selectedDate, 'all')
+        setSelectedTask('all')
         setData(processedData)
-        let task_list = [...new Set(filteredData.Task)]
-        task_list.unshift('all')
-        setTaskList(task_list)
+        }
+        else setData(processedData)
+        if (selectedDate != 'all') {
+          let {processedData, filteredData} = 
+        analysistools.calculateItemTrend(itemData, durationData, selectedDate, 'all')
+          let task_list = [...new Set(filteredData.Task)]
+          task_list.unshift('all')
+          setTaskList(task_list)
+        }
+        else {
+          let task_list = [...new Set(itemData.Task)]
+          task_list.unshift('all')
+          setTaskList(task_list)
+        }
         setError(null)
       } catch (error) {
         console.error('处理数据失败:', error)
@@ -257,7 +274,7 @@ export default function InventoryPage() {
   }
 
   // 找出最大数量，用于计算条形图比例
-  const maxCount = top10Items[0][1]
+  const maxCount = top10Items.length > 0 ? top10Items[0][1] : 0
   return (
     <div className="container mx-auto px-4 py-8 bg-white relative">
       {/* GitHub 图标 */}

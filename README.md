@@ -138,7 +138,7 @@ GET /api/analyse?date=YYYYMMDD
 
 ## 使用方法
 
-1. 启动应用后，通过浏览器访问 http://localhost:5000
+1. 启动应用后，通过浏览器访问 http://localhost:3000
 2. 在Web界面上选择要分析的日志日期
 3. 查看分析结果，包括交互物品的统计信息
 
@@ -146,7 +146,7 @@ GET /api/analyse?date=YYYYMMDD
 
 - 如果无法自动检测BetterGI安装路径，请手动在`mini/.env`文件中设置
 - 确保已安装Python
-- 检查防火墙设置，确保允许本地端口5000的访问
+- 检查防火墙设置，确保允许本地端口3000的访问
 
 ## 开发者信息
 
