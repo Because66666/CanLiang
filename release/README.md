@@ -12,25 +12,72 @@
 - 提供REST API接口进行日志分析
 - 通过Web界面直观展示分析结果
 
-### EXE可执行文件的使用方法
-1. 直接启动，会自动检测BetterGI安装路径。
-2. 使用`--bgi_path=xxx`或`-bgi xxx`参数指定BetterGI安装路径。
-3. 使用`--port=xxx`或`-port xxx`参数指定Web服务端口（默认3000）。
-4. 使用`--do_not_open_website`或`-no`参数禁用自动打开浏览器。
-5. 使用`--help`或者`-h`参数查看帮助信息。
-举例：
-```
-.\Canliang.exe --bgi_path=D:\BetterGI --port=8080 --do_not_open_website
-```
-
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/f0faf0bb-8b73-4db4-b106-9cb12dc0443c" alt="示例图片" width="100%">
+<img src="https://github.com/user-attachments/assets/a67d635f-0922-454f-89c2-08237a86699f" alt="示例图片" width="100%">
+
+
+### 致谢提交PR的合作开发者
+[xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2  
 
 ## 系统要求
 
 - Python 3.6+
 
+## 快速开始
+
+### 首次运行
+
+只需运行项目根目录下的`lite_runner.py`脚本：
+
+```bash
+python lite_runner.py
+```
+
+首次运行时，脚本会自动执行以下操作：
+
+1. 检测BetterGI安装路径
+2. 配置Python虚拟环境
+3. 安装后端依赖
+4. 启动服务
+
+
+
+### 后续运行
+
+初始化完成后，再次运行时将跳过环境配置步骤，直接启动服务器。
+
+```bash
+python lite_runner.py
+```
+
+## 手动配置
+
+如果自动检测BetterGI安装路径失败，您需要手动在`mini/.env`文件中设置BetterGI的安装路径：
+
+```
+BETTERGI_PATH=您的BetterGI安装路径
+```
+
+## 项目结构
+
+```
+Analyse_bettergi_log/
+├── mini/                  # 新一代免npm环境的服务。已将前端静态导出。
+│   ├── app.py            # Flask应用主文件
+│   ├── static/           # 前端静态文件
+│   ├── requirements.txt  # Python依赖列表
+│   └── README.md         # 后端服务说明
+├── lite_runner.py         # 现启动脚本
+├── run.py                 # 前一代运行脚本
+├── server/                # 后端服务
+│   ├── app.py            # Flask应用主文件
+│   ├── analyse.py        # 日志分析模块
+│   ├── requirements.txt  # Python依赖列表
+│   └── README.md         # 后端服务说明
+└── website/              # 前端应用
+    └── ...               # 前端相关文件
+```
 
 ## API接口
 
@@ -52,34 +99,43 @@ GET /api/LogList
 }
 ```
 约定：日期为从现在到以前日期排序。靠近现在的日期在列表中靠前。
+**细节**：BGI的日志仅保留最近31个日志文件。过于远古的日志文件不会被保留，因此canliang无法统计以前的数据。
 
-### 获取日志数据
+### 分析指定日期的日志
 
 ```
-GET /api/LogData
+GET /api/analyse?date=YYYYMMDD
 ```
 
-返回所有日志的原始数据，包括持续时间和物品信息，供前端进行分析和展示。
+参数：
+- `date`: 日志日期，格式为YYYYMMDD
+参考请求：http://xxx.xxx.xxx.xxx:5000/api/analyse?date=20250504
 
 参考响应：
-```JSON
+```JSON 
 {
-  "duration": {
-    "日期": ["20250504", "20250503", "20250218"],
-    "持续时间": [330, 420, 180]
+  "item_count": {
+    "\u517d\u8089": 2,
+    "\u51b0\u6676\u8776": 1,
+    "\u6c61\u79fd\u7684\u9762\u5177": 16,
+    "\u6c89\u91cd\u53f7\u89d2": 7,
+    "\u6df7\u6c8c\u56de\u8def": 1,
+    "\u7981\u5492\u7ed8\u5377": 4,
+    "\u79bd\u8089": 2,
+    "\u7ed3\u5b9e\u7684\u9aa8\u7247": 1,
+    "\u8106\u5f31\u7684\u9aa8\u7247": 1,
+    "\u8309\u6d01\u8349": 3,
+    "\u987b\u5f25\u8537\u8587": 1,
+    "\u9e1f\u86cb": 2,
+    "\u9ec4\u91d1\u87f9": 1,
+    "\u9ed1\u6676\u53f7\u89d2": 1,
+    "\u9ed1\u94dc\u53f7\u89d2": 3
   },
-  "item": {
-    "物品名称": ["兽肉", "冰晶蝶", "污秽的面具", "沉重号角"],
-    "时间": ["04:10:02.395", "04:15:30.123", "05:20:15.678", "06:30:45.234"],
-    "日期": ["20250504", "20250504", "20250503", "20250503"]
-  }
+  "duration": "6小时29分钟"
 }
 ```
-
 说明：
-- `duration`: 包含每日的运行持续时间数据（单位：分钟）
-- `item`: 包含所有拾取物品的详细记录，包括物品名称、拾取时间和日期
-- 前端可以基于这些原始数据进行各种统计分析和可视化展示
+返回指定日期日志的分析结果，包括交互或拾取物品的统计信息。键为物品名称，值为该物品出现的次数。duration字段为总的运行时间计算。
 
 ## 使用方法
 
@@ -89,15 +145,14 @@ GET /api/LogData
 
 ## 故障排除
 
-- 如果无法自动检测BetterGI安装路径，请使用命令行参数`--bgi_path`或`-bgi`指定路径
+- 如果无法自动检测BetterGI安装路径，请手动在`mini/.env`文件中设置
 - 确保已安装Python
 - 检查防火墙设置，确保允许本地端口3000的访问
-- 如需更改端口，可使用命令行参数`--port`指定
 
 ## 开发者信息
 
 作者: Because66666
-版本: 1.1.3
+版本: 1.1.4
 
 ## 许可证
 
