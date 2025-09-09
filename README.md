@@ -14,7 +14,8 @@
 
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/56430317-2614-4e99-adf0-96c8adcf6f7f" alt="示例图片" width="100%">
+<img src="https://github.com/user-attachments/assets/a67d635f-0922-454f-89c2-08237a86699f" alt="示例图片" width="100%">
+
 
 ### 致谢提交PR的合作开发者
 [xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2  
@@ -151,7 +152,7 @@ GET /api/analyse?date=YYYYMMDD
 ## 开发者信息
 
 作者: Because66666
-版本: 1.1.2
+版本: 1.1.4
 
 ## 许可证
 
