@@ -20,7 +20,7 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
   const formatValue = (value: number) => {
     if (type === "duration") {
       // 将分钟数转换为时间格式
-      const hours = Math.floor(value / 60)
+      const hours = Math.floor(value / 3600)
       const minutes = value % 60
       return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
     }
