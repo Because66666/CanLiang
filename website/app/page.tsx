@@ -77,19 +77,29 @@ export default function InventoryPage() {
   // 处理统计卡片点击
   const handleStatClick = async (type: "totalItems" | "duration") => {
     const titles = {
-      totalItems: "总物品数量趋势",
+      totalItems: "物品数量趋势",
       duration: "运行时间趋势",
     }
 
-    setStatModal({
+    if (selectedTask !== 'all'){
+      setStatModal({
       type,
-      title: titles[type],
+      title: `【${selectedTask}】${titles[type]}`,
       data: null,
       loading: true,
     })
+    }
+    else{
+      setStatModal({
+        type,
+        title: `总${titles[type]}`,
+        data: null,
+        loading: true,
+      })
+    }
 
     try {
-      const trendData = analysistools.calculateTrendData(type, itemData!, durationData!)
+      const trendData = analysistools.calculateTrendData(type, itemData!, durationData!, selectedTask)
       setStatModal((prev) => (prev ? { ...prev, data: trendData, loading: false } : null))
     } catch (error) {
       console.error(`获取${titles[type]}数据失败:`, error)
@@ -97,14 +107,14 @@ export default function InventoryPage() {
     }
   }
 
-  // 处理物品点击
+  // 处理物品点击,TODO:支持筛选功能
   const handleItemClick = async (itemName: string) => {
     setSelectedItem(itemName)
     setLoadingTrend(true)
     setItemTrendData(null)
 
     try {
-      const trendData = analysistools.calculateAnItemTrend(itemName, itemData!)
+      const trendData = analysistools.calculateAnItemTrend(itemName, itemData!, selectedTask)
       setItemTrendData(trendData)
     } catch (error) {
       console.error("获取物品趋势数据失败:", error)
@@ -203,17 +213,21 @@ export default function InventoryPage() {
 
       try {
         setLoading(true)
+        // 根据初始条件进行尝试筛选
         let {processedData, filteredData} = 
         analysistools.calculateItemTrend(itemData, durationData, selectedDate, selectedTask)      
         // 检查item_count是否为空
         if (!processedData.item_count || Object.keys(processedData.item_count).length === 0) {
           console.log('警告：processedData的item_count记录为空')
+          // 指的是当前日期下，没有对应的配置组数据。需要将配置组的筛选条件改为all，并且设置SelectedTask为all
           let {processedData, filteredData} = 
         analysistools.calculateItemTrend(itemData, durationData, selectedDate, 'all')
         setSelectedTask('all')
         setData(processedData)
         }
         else setData(processedData)
+
+        // 根据当前日期，来刷新当前日期条件下配置组有哪些选项
         if (selectedDate != 'all') {
           let {processedData, filteredData} = 
         analysistools.calculateItemTrend(itemData, durationData, selectedDate, 'all')
@@ -222,6 +236,7 @@ export default function InventoryPage() {
           setTaskList(task_list)
         }
         else {
+          // 全部日期情况下，配置组应当包含所有可能的配置组
           let task_list = [...new Set(itemData.Task)]
           task_list.unshift('all')
           setTaskList(task_list)
@@ -355,7 +370,7 @@ export default function InventoryPage() {
         className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3"
       >
         <StatCard
-          title="总物品数量"
+          title="物品数量"
           value={totalItems.toString()}
           icon={Package}
           color={colors.primary}

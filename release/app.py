@@ -131,7 +131,7 @@ duration_datadict = {
 }
 log_list = None
 # 预编译正则表达式
-LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)') # 匹配日支行
+LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)') # 匹配日志行
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 # 文件保存地址
 # 全局变量-当前app.py所在的文件夹路径（不含自己）

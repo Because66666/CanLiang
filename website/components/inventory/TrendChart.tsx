@@ -18,6 +18,7 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
 
   // 格式化数值显示
   const formatValue = (value: number) => {
+    console.log('formatValue', value)
     if (type === "duration") {
       // 将分钟数转换为时间格式
       const hours = Math.floor(value / 3600)
