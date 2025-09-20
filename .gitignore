@@ -6,6 +6,7 @@ website/output/
 website/node_modules/
 release/build/Canliang
 release/screenshots/
+release/dist/
 # next.js
 website/.next/
 website/out/

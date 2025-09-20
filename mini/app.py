@@ -35,7 +35,8 @@ duration_datadict = {
 }
 log_list = None
 # 预编译正则表达式
-LOG_PATTERN = re.compile(r'\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)') # 匹配日支行
+FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n') # 匹配日志第一行
+LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n') # 匹配日志行
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 # 文件保存地址
 # 全局变量-当前app.py所在的文件夹路径（不含自己）
@@ -115,6 +116,9 @@ def parse_log(log_content, date_str):
     """
     global item_datadict, duration_datadict
     matches = LOG_PATTERN.findall(log_content)
+    first_line_match = FIRST_LINE_PATTERN.match(log_content)
+    if first_line_match:
+        matches = [first_line_match.groups()] + matches
 
     # type_count = {}
     # interaction_items = []
@@ -154,7 +158,12 @@ def parse_log(log_content, date_str):
 
 
         # 转换时间戳
-        current_time = parse_timestamp_to_seconds(timestamp)
+        try:
+            current_time = parse_timestamp_to_seconds(timestamp)
+        except Exception as e:
+            logger.error(f"解析时间戳{timestamp}时候发生错误:{e}")
+            logger.error(f'涉及的完整匹配字符串：{match}')
+            continue
         # 提取拾取内容
         if '交互或拾取' in details:
             item = details.split('：')[1].strip('"')
@@ -262,7 +271,7 @@ def get_log_list():
             # 如果结果为空
             continue
         if "error" in result:
-            logger.error(f"发生错误:{result['error']}")
+            logger.error(f"解析{file}时候发生错误:{result['error']}")
             continue
 
         # 过滤掉不需要的物品
@@ -353,8 +362,3 @@ if __name__ == "__main__":
     # log_list = get_log_list()
 
     app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
-
-    # with open('1.log','r',encoding='utf-8') as e:
-    #     a = e.read()
-    # data = parse_log(a,'20250401')
-    # print(data)
