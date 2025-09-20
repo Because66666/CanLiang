@@ -83,7 +83,7 @@ class AnalysisFunctions {
         }
       })
     }
-
+    console.log('finalItemData',finalItemData)
     // 统计物品数量
     finalItemData.ItemName.forEach((itemName) => {
       filteredItemCount[itemName] = (filteredItemCount[itemName] || 0) + 1
@@ -104,15 +104,33 @@ class AnalysisFunctions {
     } else {
       // selectedTask不为all，计算时间差
       if (finalItemData.TimeStamp.length > 0) {
-        const timeStrings = finalItemData.TimeStamp
-        const timeInSeconds = timeStrings.map(timeStr => {
+        // 按日期聚类每天的timestamp
+        const dailyTimeRanges: { [key: string]: { min: number, max: number } } = {}
+        
+        finalItemData.TimeStamp.forEach((timeStr, index) => {
+          const date = finalItemData.Date[index]
+          
+          // 解析时间字符串为秒数
           const [hours, minutes, seconds] = timeStr.split(':')
           const [sec, ms] = seconds.split('.')
-          return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec)
+          const timeInSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec)
+          
+          // 初始化日期的数据结构
+          if (!dailyTimeRanges[date]) {
+            dailyTimeRanges[date] = { min: timeInSeconds, max: timeInSeconds }
+          }
+          
+          // 更新最小值和最大值
+          dailyTimeRanges[date].min = Math.min(dailyTimeRanges[date].min, timeInSeconds)
+          dailyTimeRanges[date].max = Math.max(dailyTimeRanges[date].max, timeInSeconds)
         })
-        const maxTime = Math.max(...timeInSeconds)
-        const minTime = Math.min(...timeInSeconds)
-        totalDuration = maxTime - minTime
+        
+        // 分别计算每天的duration，然后累加得到totalDuration
+        totalDuration = 0
+        Object.values(dailyTimeRanges).forEach(timeRange => {
+          const dailyDuration = timeRange.max - timeRange.min
+          totalDuration += dailyDuration
+        })
       }
     }
 
@@ -124,7 +142,7 @@ class AnalysisFunctions {
       duration: formattedDuration
     }
     // console.log('filteredData', finalItemData)
-    // console.log('processedData', processedData)
+    console.log('processedData', processedData)
     return { processedData, filteredData: finalItemData }
   }
 

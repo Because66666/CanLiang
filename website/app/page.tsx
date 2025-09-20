@@ -214,6 +214,7 @@ export default function InventoryPage() {
       if (!selectedDate ||!itemData || !durationData) return
 
       try {
+        // console.log('selectedDate',selectedDate,'selectedTask',selectedTask)
         setLoading(true)
         // 根据初始条件进行尝试筛选
         let {processedData, filteredData} = 

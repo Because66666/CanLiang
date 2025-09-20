@@ -352,7 +352,7 @@ if __name__ == "__main__":
 
     # log_list = get_log_list()
 
-    app.run(debug=False, host='0.0.0.0', port=3001, use_reloader=False)
+    app.run(debug=False, host='0.0.0.0', port=3000, use_reloader=False)
 
     # with open('1.log','r',encoding='utf-8') as e:
     #     a = e.read()

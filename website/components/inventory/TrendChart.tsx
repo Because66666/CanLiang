@@ -7,6 +7,7 @@ import { max } from "date-fns"
  * 趋势图表组件
  */
 export function TrendChart({ data, title, colors, type }: TrendChartProps) {
+  // console.log('data',data)
   const sortedData = Object.entries(data).sort(([a], [b]) => a.localeCompare(b))
   const maxValue = Math.max(...Object.values(data))
   const minValue = Math.min(...Object.values(data))
@@ -19,11 +20,11 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
 
   // 格式化数值显示
   const formatValue = (value: number) => {
-    console.log('formatValue', value)
+    // console.log('formatValue', value)
     if (type === "duration") {
-      // 将分钟数转换为时间格式
+      // 将秒数转换为时间格式
       const hours = Math.floor(value / 3600)
-      const minutes = value % 60
+      const minutes = Math.floor((value % 3600) / 60)
       return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
     }
     return value.toString()
@@ -59,14 +60,19 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
 
   // 计算Y轴坐标和标签（去重）
   const yAxisLabels = (() => {
-    const labels = new Map<string, number>() // 用Map去重，key为标签，value为y坐标
-    
-    // 计算每个位置的标签
+    // 第一步：根据ratios计算所有value值
     const ratios = [0, 0.25, 0.5, 0.75, 1]
+    const values: number[] = []
+    
     ratios.forEach((ratio) => {
-      const value = Math.round(minValue + (maxValue - minValue) * Math.abs(1 - ratio))
-      const y = padding + ratio * innerHeight
-      
+      const value = Math.round(minValue + (maxValue - minValue) * (1-ratio))
+      values.push(value)
+    })
+    
+    // 第二步：生成标签并去重
+    const uniqueLabels = new Map<string, number>() // key为标签，value为对应的数值
+    
+    values.forEach((value) => {
       let label: string
       if (type === "duration") {
         const hours = Math.floor(value / 3600)
@@ -76,44 +82,38 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
           label = `${hours}h`
         } else {
           // 1小时内，显示整十分钟
+          if (totalMinutes>10){
           const tenMinutes = Math.floor(totalMinutes / 10) * 10
-          label = tenMinutes > 0 ? `${tenMinutes}m` : '0m'
+          label = `${tenMinutes}m`
+        }
+        // 10分钟内，显示10m
+        else if (60<=value && value<600){
+          label = '10m'
+          }
+        // 1分钟内，显示1m
+        else label = '1m'
         }
       } else {
         label = value.toString()
       }
       
-      // 只保留第一个出现的标签（从上到下）
-      if (!labels.has(label)) {
-        labels.set(label, y)
+      // 只保留第一个出现的标签
+      if (!uniqueLabels.has(label)) {
+        uniqueLabels.set(label, value)
       }
     })
     
-    // 转换回数组并保持原始顺序
+    // 第三步：根据去重后的标签数量均匀分配y值
     const result: { y: number; label: string }[] = []
-    ratios.forEach((ratio) => {
-      const value = Math.round(minValue + (maxValue - minValue) * (1 - ratio))
-      const y = padding + ratio * innerHeight
-      
-      let label: string
-      if (type === "duration") {
-        const hours = Math.floor(value / 3600)
-        const totalMinutes = Math.floor(value / 60)
-        if (maxValue >= 3600) {
-          label = `${hours}h`
-        } else {
-          const tenMinutes = Math.floor(totalMinutes / 10) * 10
-          label = tenMinutes > 0 ? `${tenMinutes}m` : '0m'
-        }
-      } else {
-        label = value.toString()
-      }
-      
-      if (labels.has(label) && labels.get(label) === y) {
-        result.push({ y, label })
-      }
+    const labelsArray = Array.from(uniqueLabels.entries())
+    const step = innerHeight / (labelsArray.length - 1 || 1)
+    
+    labelsArray.forEach(([label, value], index) => {
+      const y = padding + index * step
+      result.push({ y, label })
     })
     
+    // console.log('Y轴标签结果:', result)
     return result
   })()
 
