@@ -108,7 +108,7 @@ class AnalysisFunctions {
         const timeInSeconds = timeStrings.map(timeStr => {
           const [hours, minutes, seconds] = timeStr.split(':')
           const [sec, ms] = seconds.split('.')
-          return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec) + parseFloat('0.' + ms)
+          return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec)
         })
         const maxTime = Math.max(...timeInSeconds)
         const minTime = Math.min(...timeInSeconds)
@@ -172,41 +172,37 @@ class AnalysisFunctions {
       }
       else {
         // 筛选selectedTask下的时长
-        const taskTimeRanges: { [key: string]: { [task: string]: { min: number, max: number } } } = {}
+        const taskTimeRanges: { [key: string]: { min: number, max: number } } = {}
 
-        // 第一步：收集每个日期每个任务的时间范围
+        // 第一步：只收集指定selectedTask的时间范围
         itemData.Date.forEach((date, index) => {
           const task = itemData.Task[index]
-          const timeStr = itemData.TimeStamp[index]
+          
+          // 只处理selectedTask的数据
+          if (task === selectedTask) {
+            const timeStr = itemData.TimeStamp[index]
 
-          // 解析时间字符串为秒数
-          const [hours, minutes, seconds] = timeStr.split(':')
-          const [sec, ms] = seconds.split('.')
-          const timeInSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec)
+            // 解析时间字符串为秒数
+            const [hours, minutes, seconds] = timeStr.split(':')
+            const [sec, ms] = seconds.split('.')
+            const timeInSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(sec)
 
-          // 初始化日期和任务的数据结构
-          if (!taskTimeRanges[date]) {
-            taskTimeRanges[date] = {}
+            // 初始化日期的数据结构
+            if (!taskTimeRanges[date]) {
+              taskTimeRanges[date] = { min: timeInSeconds, max: timeInSeconds }
+            }
+
+            // 更新最小值和最大值
+            taskTimeRanges[date].min = Math.min(taskTimeRanges[date].min, timeInSeconds)
+            taskTimeRanges[date].max = Math.max(taskTimeRanges[date].max, timeInSeconds)
           }
-          if (!taskTimeRanges[date][task]) {
-            taskTimeRanges[date][task] = { min: timeInSeconds, max: timeInSeconds }
-          }
-
-          // 更新最小值和最大值
-          taskTimeRanges[date][task].min = Math.min(taskTimeRanges[date][task].min, timeInSeconds)
-          taskTimeRanges[date][task].max = Math.max(taskTimeRanges[date][task].max, timeInSeconds)
         })
 
-        // 第二步：计算每天的总时长（所有任务时长的总和）
-        Object.entries(taskTimeRanges).forEach(([date, tasks]) => {
-          let totalDuration = 0
-
-          Object.values(tasks).forEach(timeRange => {
-            totalDuration += (timeRange.max - timeRange.min)
-          })
-
-          trendData[date] = totalDuration
+        // 第二步：计算每天指定任务的时长
+        Object.entries(taskTimeRanges).forEach(([date, timeRange]) => {
+          trendData[date] = timeRange.max - timeRange.min
         })
+        
       }
     }
 

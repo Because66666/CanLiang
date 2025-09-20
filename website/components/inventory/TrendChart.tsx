@@ -1,6 +1,7 @@
 import { motion } from "framer-motion"
 import { Package, Clock, TrendingUp } from "lucide-react"
 import { TrendChartProps } from "@/types/inventory"
+import { max } from "date-fns"
 
 /**
  * 趋势图表组件
@@ -56,6 +57,66 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
     }
   }
 
+  // 计算Y轴坐标和标签（去重）
+  const yAxisLabels = (() => {
+    const labels = new Map<string, number>() // 用Map去重，key为标签，value为y坐标
+    
+    // 计算每个位置的标签
+    const ratios = [0, 0.25, 0.5, 0.75, 1]
+    ratios.forEach((ratio) => {
+      const value = Math.round(minValue + (maxValue - minValue) * Math.abs(1 - ratio))
+      const y = padding + ratio * innerHeight
+      
+      let label: string
+      if (type === "duration") {
+        const hours = Math.floor(value / 3600)
+        const totalMinutes = Math.floor(value / 60)
+        if (maxValue >= 3600) {
+          // 超过1小时，显示整数小时
+          label = `${hours}h`
+        } else {
+          // 1小时内，显示整十分钟
+          const tenMinutes = Math.floor(totalMinutes / 10) * 10
+          label = tenMinutes > 0 ? `${tenMinutes}m` : '0m'
+        }
+      } else {
+        label = value.toString()
+      }
+      
+      // 只保留第一个出现的标签（从上到下）
+      if (!labels.has(label)) {
+        labels.set(label, y)
+      }
+    })
+    
+    // 转换回数组并保持原始顺序
+    const result: { y: number; label: string }[] = []
+    ratios.forEach((ratio) => {
+      const value = Math.round(minValue + (maxValue - minValue) * (1 - ratio))
+      const y = padding + ratio * innerHeight
+      
+      let label: string
+      if (type === "duration") {
+        const hours = Math.floor(value / 3600)
+        const totalMinutes = Math.floor(value / 60)
+        if (maxValue >= 3600) {
+          label = `${hours}h`
+        } else {
+          const tenMinutes = Math.floor(totalMinutes / 10) * 10
+          label = tenMinutes > 0 ? `${tenMinutes}m` : '0m'
+        }
+      } else {
+        label = value.toString()
+      }
+      
+      if (labels.has(label) && labels.get(label) === y) {
+        result.push({ y, label })
+      }
+    })
+    
+    return result
+  })()
+
   return (
     <div className="w-full">
       <div className="mb-4 flex items-center gap-2">
@@ -81,18 +142,14 @@ export function TrendChart({ data, title, colors, type }: TrendChartProps) {
           <rect x={padding} y={padding} width={innerWidth} height={innerHeight} fill="url(#grid)" />
 
           {/* Y轴标签 */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-            const value = Math.round(minValue + (maxValue - minValue) * (1 - ratio))
-            const y = padding + ratio * innerHeight
-            return (
-              <g key={ratio}>
-                <line x1={padding - 5} y1={y} x2={padding} y2={y} stroke="#666" strokeWidth="1" />
-                <text x={padding - 10} y={y + 4} textAnchor="end" fontSize="12" fill="#666">
-                  {type === "duration" ? (value > 60 ? `${Math.floor(value / 60)}h` : `${value}m`) : value}
-                </text>
-              </g>
-            )
-          })}
+          {yAxisLabels.map((item, index) => (
+            <g key={index}>
+              <line x1={padding - 5} y1={item.y} x2={padding} y2={item.y} stroke="#666" strokeWidth="1" />
+              <text x={padding - 10} y={item.y + 4} textAnchor="end" fontSize="12" fill="#666">
+                {item.label}
+              </text>
+            </g>
+          ))}
 
           {/* 渐变区域 */}
           <path d={areaPath} fill="url(#areaGradient)" />

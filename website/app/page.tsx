@@ -107,7 +107,7 @@ export default function InventoryPage() {
     }
   }
 
-  // 处理物品点击,TODO:支持筛选功能
+  // 处理物品点击
   const handleItemClick = async (itemName: string) => {
     setSelectedItem(itemName)
     setLoadingTrend(true)
@@ -169,6 +169,8 @@ export default function InventoryPage() {
         // 关于/api/LogList
         setLoading(true)
         const result = await apiService.fetchDateList()
+        // 确保日期列表是倒序排列（大的日期在前面）
+        result.sort((a, b) => b.value.localeCompare(a.value))
         setDateList(result)
         
         
