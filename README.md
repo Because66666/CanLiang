@@ -150,3 +150,9 @@ README版本: 1.1.5
 ## 许可证
 
 本项目遵循Apache-2.0 License许可证。
+
+## 捐赠donate
+
+项目开发不易，所有工作均为开发者Because66666独立开发。捐赠通过二维码：
+![1758341869465](https://github.com/user-attachments/assets/b200ecb2-aaa3-48b1-a8e2-7d14abe1750c)
+
