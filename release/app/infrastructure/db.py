@@ -61,11 +61,12 @@ class LogDataManager:
             matches = [first_line_match.groups()] + matches
 
         item_count = {}
-        duration = 0
         items = []
 
-        current_start = None  # 当前段开始时间
-        current_end = None
+        # 使用时间段列表管理所有活动时间段
+        time_segments = []  # 存储所有时间段 [(start, end), ...]
+        current_start = None
+        last_time = None
         current_task = None  # 当前运行的配置组
         
         for match in matches:
@@ -112,32 +113,23 @@ class LogDataManager:
                     self.item_cached_list.append(cache_key)
 
             # 处理时间段
-            if not current_start:
-                # 开始新的时间段
+            if last_time is None:
+                # 第一个事件
                 current_start = current_time
-                current_end = current_time
-            else:
-                # 计算与上一个有效时间的间隔
-                delta = int(current_time - current_end)
-                if delta <= 300:
-                    # 表明是连续的事件，更新结束时间
-                    current_end = current_time
-                else:
-                    # 表明是一段新的事件
-                    if delta <= 0:
-                        logger.critical(
-                            f"时间段错误,请检查。有关参数：{timestamp, details, date_str, current_start, current_end, delta}")
-                    else:
-                        # 累加持续时间
-                        duration += int(delta)
-                    # 开始新的时间段
-                    current_start = current_time
-                    current_end = current_time
+            elif current_time - last_time > 300:
+                # 间隔过大（超过5分钟），结束当前段
+                if current_start is not None:
+                    time_segments.append((current_start, last_time))
+                current_start = current_time
+            
+            last_time = current_time
 
-        # 处理最后一段时间
-        if current_start and current_end and current_start != current_end:
-            delta = int(current_end - current_start)
-            duration += int(delta)
+        # 处理最后一段
+        if current_start is not None and last_time is not None:
+            time_segments.append((current_start, last_time))
+
+        # 计算总持续时间
+        duration = sum(int(end - start) for start, end in time_segments)
 
         return LogAnalysisResult(
             item_count=item_count,
