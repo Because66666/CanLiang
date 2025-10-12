@@ -240,7 +240,8 @@ export default function InventoryPage() {
         }
         else {
           // 全部日期情况下，配置组应当包含所有可能的配置组
-          let task_list = [...new Set(itemData.Task)]
+          let task_list = [...new Set(itemData.Task)].filter(task => task !== '')
+          console.log('task_list',task_list)
           task_list.unshift('all')
           setTaskList(task_list)
         }

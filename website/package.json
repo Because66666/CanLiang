@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && powershell -Command \"Remove-Item -Path '../release/app/static/*' -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path './output/*' -Destination '../release/app/static/' -Recurse -Force\"",
     "start": "next start",
     "lint": "next lint"
   },

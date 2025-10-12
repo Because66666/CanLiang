@@ -4,8 +4,7 @@ import { promises } from 'dns'
 import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict } from '../types/inventory'
 
 // API基础配置
-// const BASE_URL = 'http://localhost:3001/'
-const BASE_URL = '/'
+const BASE_URL = process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3001/'
 
 // API请求封装函数
 class ApiService {
