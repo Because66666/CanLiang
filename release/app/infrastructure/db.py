@@ -6,8 +6,10 @@ import os
 import re
 import logging
 from typing import List, Dict, Optional, Tuple
+from datetime import date
 from app.domain.entities import LogEntry, ItemInfo, DurationInfo, LogAnalysisResult, ConfigGroup
 from app.infrastructure.utils import parse_timestamp_to_seconds
+from app.infrastructure.database import DatabaseManager
 
 logger = logging.getLogger('BetterGI初始化')
 
@@ -23,7 +25,7 @@ TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)�
 class LogDataManager:
     """
     日志数据管理器
-    负责日志文件的读取、解析和数据管理
+    负责日志文件的读取、解析和数据管理，集成SQLite数据库存储
     """
     
     def __init__(self, log_dir: str):
@@ -42,6 +44,13 @@ class LogDataManager:
             '日期': [], '持续时间': []
         }
         self.log_list = None
+        
+        # 初始化数据库管理器
+        db_path = os.path.join(log_dir, 'logs.db')
+        self.db_manager = DatabaseManager(db_path)
+        
+        # 今天的日期字符串，用于排除今天的数据存储
+        self.today_str = date.today().strftime('%Y%m%d')
     
     def parse_log(self, log_content: str, date_str: str) -> LogAnalysisResult:
         """
@@ -162,6 +171,7 @@ class LogDataManager:
     def get_log_list(self) -> List[str]:
         """
         获取日志文件列表，并过滤掉不包含交互物品的日志文件。
+        使用智能加载策略：优先从数据库读取，然后补充缺失的文件数据
         更新duration_datadict, item_datadict两个实例变量
 
         Returns:
@@ -172,21 +182,20 @@ class LogDataManager:
                      for f in os.listdir(self.log_dir)
                      if f.startswith('better-genshin-impact')]
 
-        filtered_logs = []
-        duration_dict = {
-            '日期': [],
-            '持续时间': []
-        }
-        cached_dict = {
-            '物品名称': [],
-            '时间': [],
-            '日期': [],
-            '归属配置组': []
-        }
+        # 获取数据库中已存储的日期
+        stored_dates = set(self.db_manager.get_stored_dates())
         
-        for file in log_files:
-            file_path = os.path.join(self.log_dir, f"better-genshin-impact{file}.log")
-            result = self.read_log_file(file_path, file)
+        # 找出需要处理的文件（数据库中没有的或者是今天的文件）
+        files_to_process = []
+        for file_date in log_files:
+            if file_date not in stored_dates or file_date == self.today_str:
+                files_to_process.append(file_date)
+
+        # 处理需要解析的文件
+        new_data_processed = False
+        for file_date in files_to_process:
+            file_path = os.path.join(self.log_dir, f"better-genshin-impact{file_date}.log")
+            result = self.read_log_file(file_path, file_date)
             if not result:
                 continue
 
@@ -196,22 +205,58 @@ class LogDataManager:
                 if forbidden_item in items:
                     del items[forbidden_item]
 
-            # 只保留有物品的日志
+            # 只处理有物品的日志
             if items:
-                filtered_logs.append(file)
-                duration_dict['日期'].append(file)
-                duration_dict['持续时间'].append(result.duration)
+                # 如果不是今天的数据，存储到数据库
+                if file_date != self.today_str:
+                    item_list = [
+                        {
+                            'name': item.name,
+                            'timestamp': item.timestamp,
+                            'config_group': item.config_group
+                        }
+                        for item in result.items
+                    ]
+                    self.db_manager.insert_log_file_data(file_date, result.duration, item_list)
                 
-                # 添加物品信息到缓存字典
-                for item in result.items:
-                    cached_dict['物品名称'].append(item.name)
-                    cached_dict['时间'].append(item.timestamp)
-                    cached_dict['日期'].append(item.date)
-                    cached_dict['归属配置组'].append(item.config_group or '')
+                new_data_processed = True
 
-        self.duration_datadict = duration_dict
-        self.item_datadict = cached_dict
+        # 从数据库加载所有数据（排除今天）
+        duration_data = self.db_manager.get_duration_data(exclude_today=True)
+        item_data = self.db_manager.get_item_data(exclude_today=True)
+        
+        # 如果今天有数据，单独处理今天的数据并合并
+        today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
+        if os.path.exists(today_file_path):
+            today_result = self.read_log_file(today_file_path, self.today_str)
+            if today_result:
+                # 过滤掉不需要的物品
+                today_items = today_result.item_count.copy()
+                for forbidden_item in FORBIDDEN_ITEMS:
+                    if forbidden_item in today_items:
+                        del today_items[forbidden_item]
+                
+                # 如果今天有有效物品，添加到结果中
+                if today_items:
+                    # 将今天的数据添加到列表前面（最新的）
+                    duration_data['日期'].insert(0, self.today_str)
+                    duration_data['持续时间'].insert(0, today_result.duration)
+                    
+                    # 添加今天的物品数据
+                    for item in today_result.items:
+                        item_data['物品名称'].insert(0, item.name)
+                        item_data['时间'].insert(0, item.timestamp)
+                        item_data['日期'].insert(0, item.date)
+                        item_data['归属配置组'].insert(0, item.config_group or '')
+
+        # 更新实例变量
+        self.duration_datadict = duration_data
+        self.item_datadict = item_data
+        
+        # 获取有数据的日期列表
+        filtered_logs = duration_data['日期']
         self.log_list = filtered_logs
+        
         return filtered_logs
 
     def get_duration_data(self) -> Dict:
