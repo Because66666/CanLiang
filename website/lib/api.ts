@@ -1,7 +1,10 @@
 // API服务层 - 处理所有的API请求
 
 import { promises } from 'dns'
-import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict, WebhookDataResponse, ProgramListResponse, VideoStreamConfig, VideoStreamErrorResponse } from '../types/inventory'
+import { InventoryData, DateItem, ItemTrendData,
+   ItemDataDict, DurationDict, WebhookDataResponse,
+    ProgramListResponse, VideoStreamConfig,
+     VideoStreamErrorResponse } from '../types/inventory'
 
 // API基础配置
 const BASE_URL = process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3001/'
@@ -162,6 +165,32 @@ class ApiService {
     } catch (error) {
       console.error('Error validating stream config:', error)
       throw error
+    }
+  }
+
+  /**
+   * 获取系统详细信息
+   * @returns Promise<{success: boolean, data: {memory_usage: number, cpu_usage: number}, message: string}> 系统信息响应
+   */
+  async fetchSystemInfo(): Promise<{success: boolean, data: {memory_usage: number, cpu_usage: number}, message: string}> {
+    try {
+      const response = await fetch(`${this.baseUrl}api/systemdetail`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const responseData = await response.json()
+      
+      // 确保返回的数据结构符合预期
+      return {
+        success: responseData.success || false,
+        data: responseData.data || { memory_usage: 0.0, cpu_usage: 0.0 },
+        message: responseData.message || '获取系统信息失败'
+      }
+    } catch (error) {
+      console.error('Error fetching system info:', error)
+      throw new Error('获取系统信息失败，请稍后再试')
     }
   }
 }

@@ -3,7 +3,7 @@
 路由映射：定义URL与处理函数的关联
 """
 from flask import Blueprint, jsonify, send_from_directory, request , redirect
-from app.api.controllers import LogController, WebhookController, StreamController
+from app.api.controllers import LogController, WebhookController, StreamController, SystemInfoController
 import os
 
 # 创建蓝图
@@ -155,6 +155,8 @@ def webhook():
             'success': False,
             'message': f'处理请求时发生错误: {str(e)}'
         }), 500
+
+
 
 
 @api_bp.route('/api/stream', methods=['GET'])
@@ -318,4 +320,30 @@ def get_program_list():
             'data': [],
             'count': 0,
             'message': f'获取程序列表时发生错误: {str(e)}'
+        }), 500
+
+@api_bp.route('/api/systemdetail', methods=['GET'])
+def get_system_detail():
+    """
+    获取系统详细信息的API接口
+    
+    Returns:
+        Response: 包含系统详细信息的JSON响应
+    """
+    try:
+        # 创建临时的StreamController实例来获取系统信息
+        temp_controller = SystemInfoController()
+        system_info = temp_controller.get_system_info()
+        
+        return jsonify({
+            'success': True,
+            'data': system_info,
+            'message': '成功获取系统详细信息'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'data': {},
+            'message': f'获取系统详细信息时发生错误: {str(e)}'
         }), 500

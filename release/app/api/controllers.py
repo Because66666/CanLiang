@@ -19,6 +19,7 @@ import threading
 import time
 from flask import Response
 import argparse
+import psutil  # 添加psutil导入用于系统信息获取
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,7 @@ class WebhookController:
                 'data': [],
                 'count': 0
             }
+    
 
 
 class StreamController:
@@ -428,6 +430,45 @@ class StreamController:
             img.shape = (height, width, 4)
             img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
             
+            # 如果是指定应用，添加黑色遮罩
+            if self.target_app == 'yuanshen.exe':
+                # 基准分辨率 3840x2160
+                base_width, base_height = 3840, 2160
+                
+                # 计算缩放比例
+                scale_x = width / base_width
+                scale_y = height / base_height
+                
+                # 第一个遮罩区域：左上角(222,374)，右下角(583,448)
+                mask1_x1 = int(222 * scale_x)
+                mask1_y1 = int(374 * scale_y)
+                mask1_x2 = int(583 * scale_x)
+                mask1_y2 = int(448 * scale_y)
+                
+                # 第二个遮罩区域：左上角(3346,2087)，右下角(3731,2149)
+                mask2_x1 = int(3346 * scale_x)
+                mask2_y1 = int(2087 * scale_y)
+                mask2_x2 = int(3731 * scale_x)
+                mask2_y2 = int(2149 * scale_y)
+                
+                # 确保坐标在图像范围内
+                mask1_x1 = max(0, min(mask1_x1, width))
+                mask1_y1 = max(0, min(mask1_y1, height))
+                mask1_x2 = max(0, min(mask1_x2, width))
+                mask1_y2 = max(0, min(mask1_y2, height))
+                
+                mask2_x1 = max(0, min(mask2_x1, width))
+                mask2_y1 = max(0, min(mask2_y1, height))
+                mask2_x2 = max(0, min(mask2_x2, width))
+                mask2_y2 = max(0, min(mask2_y2, height))
+                
+                # 绘制黑色遮罩
+                if mask1_x2 > mask1_x1 and mask1_y2 > mask1_y1:
+                    cv2.rectangle(img, (mask1_x1, mask1_y1), (mask1_x2, mask1_y2), (0, 0, 0), -1)
+                
+                if mask2_x2 > mask2_x1 and mask2_y2 > mask2_y1:
+                    cv2.rectangle(img, (mask2_x1, mask2_y1), (mask2_x2, mask2_y2), (0, 0, 0), -1)
+            
             # 清理资源
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
@@ -485,6 +526,7 @@ class StreamController:
                         if not self.hwnd:
                             logger.warning(f"无法重新找到进程 {self.target_app} 的窗口，返回黑屏")
                             frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                            self.is_streaming = False
                         else:
                             frame = self.capture_window(self.hwnd)
                     else:
@@ -649,3 +691,74 @@ class StreamController:
         except Exception as e:
             logger.error(f"获取程序列表时发生错误: {e}")
             return []
+
+
+class SystemInfoController:
+    """
+    系统信息控制器
+    用于获取系统资源使用情况
+    """
+    
+    def __init__(self):
+        """
+        初始化系统信息控制器
+        """
+        pass
+    
+    def get_memory_usage(self) -> float:
+        """
+        获取内存利用率百分比
+        
+        Returns:
+            float: 内存利用率百分比，保留1位小数
+        """
+        try:
+            memory = psutil.virtual_memory()
+            memory_percent = memory.percent
+            return round(memory_percent, 1)
+        except Exception as e:
+            logger.error(f"获取内存使用率时发生错误: {e}")
+            return 0.0
+    
+    def get_cpu_usage(self, interval: float = 1.0) -> float:
+        """
+        获取CPU利用率百分比
+        
+        Args:
+            interval: 采样间隔时间（秒），默认1秒
+            
+        Returns:
+            float: CPU利用率百分比，保留1位小数
+        """
+        try:
+            cpu_percent = psutil.cpu_percent(interval=interval)
+            return round(cpu_percent, 1)
+        except Exception as e:
+            logger.error(f"获取CPU使用率时发生错误: {e}")
+            return 0.0
+    
+    def get_system_info(self) -> Dict[str, float]:
+        """
+        获取系统信息汇总
+        
+        Returns:
+            Dict[str, float]: 包含内存和CPU使用率的字典，格式：{
+                'memory_usage': 内存使用率百分比,
+                'cpu_usage': CPU使用率百分比
+            }
+        """
+        try:
+            memory_usage = self.get_memory_usage()
+            cpu_usage = self.get_cpu_usage()
+            
+            return {
+                'memory_usage': memory_usage,
+                'cpu_usage': cpu_usage
+            }
+        except Exception as e:
+            logger.error(f"获取系统信息时发生错误: {e}")
+            return {
+                'memory_usage': 0.0,
+                'cpu_usage': 0.0
+            }
+

@@ -345,3 +345,4 @@ class LogDataManager:
         # 无视之前数据，强制刷新今天数据
         self.get_log_list()
         return self.item_datadict
+

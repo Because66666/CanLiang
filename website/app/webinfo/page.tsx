@@ -124,6 +124,19 @@ export default function WebInfoPage() {
     error: null
   })
 
+  // 系统信息状态
+  const [systemInfo, setSystemInfo] = useState<{
+    memory_usage: number
+    cpu_usage: number
+    loading: boolean
+    error: string | null
+  }>({
+    memory_usage: 0,
+    cpu_usage: 0,
+    loading: true,
+    error: null
+  })
+
   /**
    * 获取程序列表
    */
@@ -279,6 +292,37 @@ export default function WebInfoPage() {
     }
   }
 
+  /**
+   * 获取系统信息
+   */
+  const fetchSystemInfo = async () => {
+    try {
+      setSystemInfo(prev => ({ ...prev, error: null }))
+      const response = await apiService.fetchSystemInfo()
+      
+      if (response.success && response.data) {
+        setSystemInfo(prev => ({ 
+          ...prev, 
+          memory_usage: response.data.memory_usage,
+          cpu_usage: response.data.cpu_usage,
+          loading: false 
+        }))
+      } else {
+        setSystemInfo(prev => ({ 
+          ...prev, 
+          error: response.message || '获取系统信息失败', 
+          loading: false 
+        }))
+      }
+    } catch (error) {
+      setSystemInfo(prev => ({ 
+        ...prev, 
+        error: error instanceof Error ? error.message : '网络错误', 
+        loading: false 
+      }))
+    }
+  }
+
     /**
    * 获取Webhook数据，没有加载状态
    */
@@ -310,12 +354,14 @@ export default function WebInfoPage() {
   useEffect(() => {
     fetchWebhookData()
     fetchProgramList() // 获取程序列表
+    fetchSystemInfo() // 获取系统信息
   }, [state.limit])
 
   // 每秒自动刷新数据
   useEffect(() => {
     const interval = setInterval(() => {
       fetchWebhookDataNoLoading()
+      fetchSystemInfo() // 定时刷新系统信息
     }, 3000) // 每3秒刷新一次
 
     return () => clearInterval(interval) // 清理定时器
@@ -346,11 +392,13 @@ export default function WebInfoPage() {
       {/* 主要内容区域 */}
       <div className="container mx-auto py-8 px-4">
         {/* 页面标题 */}
-        <div
-        className="mb-8 text-3xl font-bold text-center flex items-center justify-center gap-3"
-        style={{ color: colors.secondary }}
+        <div className="mb-8 text-3xl font-bold text-center flex items-center justify-center">
+          <div 
+            className="flex items-center gap-3"
+            style={{ color: colors.secondary }}
           >  
-          BetterGI面板
+            BetterGI面板
+          </div>
         </div>
         
         {/* 主布局：左侧3/4 + 右侧1/4 */}
@@ -373,15 +421,54 @@ export default function WebInfoPage() {
                   <div className="mb-4">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-medium">状态:</span>
-                      <Badge variant={streamState.isStreaming ? "default" : "secondary"}>
+                      <Badge 
+                        variant={streamState.isStreaming ? "default" : "secondary"}
+                        style={{
+                          backgroundColor: streamState.isStreaming ? '#1e40af' : '#93c5fd',
+                          color: streamState.isStreaming ? 'white' : '#1e40af'
+                        }}
+                      >
                         {streamState.isStreaming ? "观看中" : "无信号"}
                       </Badge>
-                      {streamState.selectedProgram && (
+                    {/* 系统信息 */}
+                    <div className="flex items-center gap-4 text-sm">
+                      {systemInfo.loading ? (
+                        <div className="text-gray-500">加载中...</div>
+                      ) : systemInfo.error ? (
+                        <div className="text-red-500">系统信息获取失败</div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">内存:</span>
+                            <Badge 
+                              variant="outline" 
+                              className={`${systemInfo.memory_usage > 80 ? 'bg-red-100 text-red-800 border-red-200' : 
+                                systemInfo.memory_usage > 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
+                                'bg-green-100 text-green-800 border-green-200'}`}
+                            >
+                              {systemInfo.memory_usage.toFixed(1)}%
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">CPU:</span>
+                            <Badge 
+                              variant="outline" 
+                              className={`${systemInfo.cpu_usage > 80 ? 'bg-red-100 text-red-800 border-red-200' : 
+                                systemInfo.cpu_usage > 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 
+                                'bg-green-100 text-green-800 border-green-200'}`}
+                            >
+                              {systemInfo.cpu_usage.toFixed(1)}%
+                            </Badge>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                      {/* {streamState.selectedProgram && (
                         <>
                           <span className="font-medium ml-4">目标程序:</span>
                           <span className="text-muted-foreground">{streamState.selectedProgram}</span>
                         </>
-                      )}
+                      )} */}
                       
                       {/* 程序选择下拉框 */}
                       <div className="ml-auto flex items-center gap-2">
@@ -493,25 +580,21 @@ export default function WebInfoPage() {
             <Card className="mb-4">
               <CardContent className="p-4">
                 <div className="flex flex-col gap-3">
-                  {/* 搜索框 */}
+                  {/* 当前状态 */}
                   <div className="flex flex-col items-center gap-2 w-full">
                     <div className="flex items-center gap-2">
-                      <Search className="h-4 w-4" style={{ color: colors.primary }} />
+                      <Play className="h-4 w-4" style={{ color: colors.primary }} />
                       <span className="text-sm" style={{ color: colors.secondary }}>
-                        搜索事件:
+                        当前状态:
                       </span>
                     </div>
-                    <div className="relative w-full">
-                      <Input
-                        placeholder="搜索事件..."
-                        value={state.searchTerm}
-                        onChange={(e) => setState(prev => ({ ...prev, searchTerm: e.target.value }))}
-                        className="pl-4 py-3 border-0 shadow-sm focus:ring-2 w-full"
-                        style={{
-                          borderColor: colors.lightBorder,
-                          boxShadow: `0 0 0 1px ${colors.lightBorder}`,
-                        }}
-                      />
+                    <div className="w-full text-center">
+                      <span className="text-sm font-medium px-3 py-2 rounded-md" style={{ 
+                        color: colors.primary,
+                        backgroundColor: `${colors.primary}15`
+                      }}>
+                        {filteredData.length > 0 ? filteredData[0].message : '正在运行'}
+                      </span>
                     </div>
                   </div>
 
