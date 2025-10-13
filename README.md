@@ -44,6 +44,10 @@
 
 从`release`下载最新版，双击运行。
 
+Webhook通知设置：在BGI的`通知-启用Webhook-Webhook端点`填写`http://127.0.0.1:3000/webhook`，并勾选`启用事件通知`。
+
+<img src="screenshots/bgi_screenshot.png" alt="示例图片" width="100%">
+
 > 因为使用了`pywin32api`和`pywin32process`，我不确定是否会报告病毒或者否被识别为恶意软件。
 
 项目中关于这两个库的使用集中在`release/app/api/controllers.py`中，主要用于捕获指定程序的视频流并传输到浏览器中。
