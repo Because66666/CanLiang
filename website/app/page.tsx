@@ -393,7 +393,10 @@ export default function InventoryPage() {
         
         <StatCard
           title="最多物品"
-          value={Object.entries(data.item_count).sort((a, b) => b[1] - a[1])[0][0]}
+          value={(() => {
+            const sortedEntries = Object.entries(data.item_count).sort((a, b) => b[1] - a[1]);
+            return sortedEntries.length > 0 ? sortedEntries[0][0] : "暂无数据";
+          })()}
           icon={BarChart2}
           color={colors.primary}
           colors={colors}

@@ -46,7 +46,7 @@ class LogDataManager:
         self.log_list = None
         
         # 初始化数据库管理器
-        db_path = os.path.join(log_dir, 'logs.db')
+        db_path = os.path.join(log_dir, 'CanLiangData.db')
         self.db_manager = DatabaseManager(db_path)
         
         # 今天的日期字符串，用于排除今天的数据存储
@@ -227,6 +227,8 @@ class LogDataManager:
         
         # 如果今天有数据，单独处理今天的数据并合并
         today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
+        self.item_cached_list = [] # 清空缓存。因为在上一步骤中包含了今天的缓存数据。
+        # 需要清空缓存数据
         if os.path.exists(today_file_path):
             today_result = self.read_log_file(today_file_path, self.today_str)
             if today_result:

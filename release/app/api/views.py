@@ -2,8 +2,8 @@
 视图模块
 路由映射：定义URL与处理函数的关联
 """
-from flask import Blueprint, jsonify, send_from_directory
-from app.api.controllers import LogController
+from flask import Blueprint, jsonify, send_from_directory, request
+from app.api.controllers import LogController, WebhookController
 import os
 
 # 创建蓝图
@@ -11,6 +11,7 @@ api_bp = Blueprint('api', __name__)
 
 # 全局控制器实例（将在应用启动时初始化）
 log_controller = None
+webhook_controller = None
 
 
 def init_controllers(log_dir: str):
@@ -20,8 +21,9 @@ def init_controllers(log_dir: str):
     Args:
         log_dir: 日志目录路径
     """
-    global log_controller
+    global log_controller, webhook_controller
     log_controller = LogController(log_dir)
+    webhook_controller = WebhookController(log_dir)
 
 
 @api_bp.route('/')
@@ -80,3 +82,68 @@ def analyse_log():
     
     result = log_controller.get_log_data()
     return jsonify(result)
+
+
+@api_bp.route('/webhook', methods=['POST'])
+def webhook():
+    """
+    Webhook接口，接收POST请求并保存数据
+    
+    Returns:
+        Response: 包含操作结果的JSON响应，例如：{
+            'success': True,
+            'message': '数据保存成功'
+        }
+    """
+    if not webhook_controller:
+        return jsonify({'success': False, 'message': 'Webhook控制器未初始化'}), 500
+    
+    try:
+        # 获取POST请求的JSON数据
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': '请求数据为空'}), 400
+        
+        # 调用控制器保存数据
+        result = webhook_controller.save_data(data)
+        
+        # 根据结果返回相应的HTTP状态码
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'处理请求时发生错误: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/api/webhook-data', methods=['GET'])
+def get_webhook_data():
+    """
+    获取webhook数据列表的API接口
+    
+    Returns:
+        Response: 包含webhook数据列表的JSON响应
+    """
+    if not webhook_controller:
+        return jsonify({'success': False, 'message': 'Webhook控制器未初始化'}), 500
+    
+    try:
+        # 获取查询参数
+        limit = request.args.get('limit', 100, type=int)
+        
+        # 调用控制器获取数据
+        result = webhook_controller.get_webhook_data(limit)
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'获取数据时发生错误: {str(e)}',
+            'data': [],
+            'count': 0
+        }), 500

@@ -114,7 +114,7 @@ else:
 BGI_LOG_DIR = os.path.join(install_path, 'log')
 
 # 创建Flask应用实例，设置静态文件夹路径为'static'
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='app/static')
 # 测试前端的时候，使用CORS
 # CORS(app)
 

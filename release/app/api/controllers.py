@@ -4,8 +4,10 @@
 """
 import logging
 from typing import Dict, List, Any
-from app.infrastructure.db import LogDataManager
+from app.infrastructure.manager import LogDataManager
+from app.infrastructure.database import DatabaseManager
 from app.infrastructure.utils import check_dict_empty
+import os
 
 logger = logging.getLogger('BetterGI初始化')
 
@@ -74,4 +76,87 @@ class LogController:
             return {
                 'duration': {'日期': [], '持续时间': []},
                 'item': {'物品名称': [], '时间': [], '日期': [], '归属配置组': []}
+            }
+
+
+class WebhookController:
+    """
+    Webhook控制器
+    处理webhook相关的业务逻辑
+    """
+    
+    def __init__(self, log_dir: str):
+        """
+        初始化webhook控制器
+        
+        Args:
+            log_dir: 日志目录路径
+        """
+        # 初始化数据库管理器
+        db_path = os.path.join(log_dir, 'CanLiangData.db')
+        self.db_manager = DatabaseManager(db_path)
+    
+    def save_data(self, dict_list: Dict) -> Dict[str, Any]:
+        """
+        保存webhook数据
+        
+        Args:
+            dict_list: 包含webhook数据的字典，必须包含'event'字段
+            
+        Returns:
+            Dict[str, Any]: 操作结果，包含success状态和message信息
+        """
+        try:
+            # 验证必需字段
+            if 'event' not in dict_list:
+                return {
+                    'success': False,
+                    'message': '缺少必需的event字段'
+                }
+            
+            # 保存数据到数据库
+            success = self.db_manager.save_webhook_data(dict_list)
+            
+            if success:
+                return {
+                    'success': True,
+                    'message': '数据保存成功'
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': '数据保存失败'
+                }
+                
+        except Exception as e:
+            logger.error(f"保存webhook数据时发生错误: {e}")
+            return {
+                'success': False,
+                'message': f'服务器内部错误: {str(e)}'
+            }
+    
+    def get_webhook_data(self, limit: int = 100) -> Dict[str, Any]:
+        """
+        获取webhook数据列表
+        
+        Args:
+            limit: 返回记录数限制
+            
+        Returns:
+            Dict[str, Any]: 包含数据列表的字典
+        """
+        try:
+            data_list = self.db_manager.get_webhook_data(limit)
+            return {
+                'success': True,
+                'data': data_list,
+                'count': len(data_list)
+            }
+        except Exception as e:
+            logger.error(f"获取webhook数据时发生错误: {e}")
+            return {
+                'success': False,
+                'message': f'获取数据失败: {str(e)}',
+                'data': [],
+                'count': 0
             }

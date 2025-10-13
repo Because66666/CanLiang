@@ -92,6 +92,23 @@ class DatabaseManager:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_items_name ON items (name)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_log_files_date ON log_files (date_str)')
             
+            # 创建webhook数据表
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS post_data (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event TEXT NOT NULL,
+                    result TEXT,
+                    timestamp TEXT,
+                    screenshot TEXT,
+                    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    message TEXT
+                )
+            ''')
+            
+            # 为webhook数据表创建索引
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_post_data_event ON post_data (event)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_post_data_create_time ON post_data (create_time)')
+            
             conn.commit()
             logger.info("数据库表结构初始化完成")
     
@@ -288,3 +305,126 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"删除日志数据时发生错误: {e}")
             return False
+    
+    def save_webhook_data(self, data_dict: Dict) -> bool:
+        """
+        保存webhook数据到数据库
+        
+        Args:
+            data_dict: 包含webhook数据的字典，必须包含'event'字段
+            
+        Returns:
+            bool: 操作是否成功
+        """
+        try:
+            # 可能存在的字段
+            possible_fields = ['result', 'timestamp', 'message', 'screenshot']
+            
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 构建插入语句
+                fields = ['event']
+                values = [data_dict['event']]
+                placeholders = ['?']
+                
+                # 添加可选字段
+                for field in possible_fields:
+                    if field in data_dict:
+                        fields.append(field)
+                        values.append(data_dict[field])
+                        placeholders.append('?')
+                
+                # 执行插入
+                query = f'''
+                    INSERT INTO post_data ({', '.join(fields)})
+                    VALUES ({', '.join(placeholders)})
+                '''
+                
+                cursor.execute(query, values)
+                conn.commit()
+                
+                logger.info(f"成功保存webhook数据，事件: {data_dict['event']}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"保存webhook数据时发生错误: {e}")
+            return False
+    
+    def cleanup_old_webhook_data(self, days_to_keep: int = 3) -> bool:
+        """
+        清理指定天数之前的webhook数据
+        
+        Args:
+            days_to_keep: 保留的天数，默认为3天
+            
+        Returns:
+            bool: 操作是否成功
+        """
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 计算截止日期（当前时间减去指定天数）
+                from datetime import timedelta
+                cutoff_datetime = datetime.now() - timedelta(days=days_to_keep)
+                cutoff_str = cutoff_datetime.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # 删除指定日期之前的数据
+                cursor.execute('''
+                    DELETE FROM post_data 
+                    WHERE create_time < ?
+                ''', (cutoff_str,))
+                
+                deleted_count = cursor.rowcount
+                conn.commit()
+                
+                if deleted_count > 0:
+                    logger.info(f"成功清理了 {deleted_count} 条 {days_to_keep} 天前的webhook数据")
+                
+                return True
+                
+        except Exception as e:
+            logger.error(f"清理旧webhook数据时发生错误: {e}")
+            return False
+
+    def get_webhook_data(self, limit: int = 100) -> List[Dict]:
+        """
+        获取webhook数据列表
+        在获取数据前会自动清理三天及更早之前的旧数据
+        
+        Args:
+            limit: 返回记录数限制
+            
+        Returns:
+            List[Dict]: webhook数据列表
+        """
+        # 在获取数据前先清理旧数据
+        self.cleanup_old_webhook_data()
+        
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, event, result, timestamp, screenshot, create_time, message
+                    FROM post_data
+                    ORDER BY create_time DESC
+                    LIMIT ?
+                ''', (limit,))
+                
+                rows = cursor.fetchall()
+                return [
+                    {
+                        'id': row[0],
+                        'event': row[1],
+                        'result': row[2],
+                        'timestamp': row[3],
+                        'screenshot': row[4],
+                        'create_time': row[5],
+                        'message': row[6]
+                    }
+                    for row in rows
+                ]
+        except Exception as e:
+            logger.error(f"获取webhook数据时发生错误: {e}")
+            return []

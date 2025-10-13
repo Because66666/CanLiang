@@ -109,3 +109,26 @@ class ConfigGroup:
     script_count: int = 0
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+
+
+@dataclass
+class PostData:
+    """
+    Webhook数据实体类
+    
+    Attributes:
+        id: 主键ID，自增
+        event: 事件名称，必填
+        result: 结果信息，可选
+        timestamp: 时间戳，可选
+        screenshot: 截图路径，可选
+        create_time: 创建时间，自动生成
+        message: 消息内容，可选
+    """
+    event: str
+    id: Optional[int] = None
+    result: Optional[str] = None
+    timestamp: Optional[str] = None
+    screenshot: Optional[str] = None
+    create_time: Optional[datetime] = None
+    message: Optional[str] = None
