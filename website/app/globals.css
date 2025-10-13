@@ -17,6 +17,24 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* 磨砂玻璃效果工具类 */
+  .glass-effect {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-hover {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
 }
 
 @layer base {

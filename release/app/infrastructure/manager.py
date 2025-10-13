@@ -225,6 +225,25 @@ class LogDataManager:
         duration_data = self.db_manager.get_duration_data(exclude_today=True)
         item_data = self.db_manager.get_item_data(exclude_today=True)
         
+        # 数据库返回的已经是字典格式，直接使用
+        date_duration_dict = duration_data.copy()
+        
+        # 构建物品数据的统一格式
+        unified_item_data = {
+            '物品名称': [],
+            '时间': [],
+            '日期': [],
+            '归属配置组': []
+        }
+        
+        # 将按日期分组的物品数据合并为统一格式
+        for date_str, items in item_data.items():
+            for i in range(len(items['物品名称'])):
+                unified_item_data['物品名称'].append(items['物品名称'][i])
+                unified_item_data['时间'].append(items['时间'][i])
+                unified_item_data['日期'].append(date_str)
+                unified_item_data['归属配置组'].append(items['归属配置组'][i])
+        
         # 如果今天有数据，单独处理今天的数据并合并
         today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
         self.item_cached_list = [] # 清空缓存。因为在上一步骤中包含了今天的缓存数据。
@@ -240,37 +259,51 @@ class LogDataManager:
                 
                 # 如果今天有有效物品，添加到结果中
                 if today_items:
-                    # 将今天的数据添加到列表前面（最新的）
-                    duration_data['日期'].insert(0, self.today_str)
-                    duration_data['持续时间'].insert(0, today_result.duration)
+                    # 将今天的数据添加到字典中
+                    date_duration_dict[self.today_str] = today_result.duration
                     
                     # 添加今天的物品数据
                     for item in today_result.items:
-                        item_data['物品名称'].insert(0, item.name)
-                        item_data['时间'].insert(0, item.timestamp)
-                        item_data['日期'].insert(0, item.date)
-                        item_data['归属配置组'].insert(0, item.config_group or '')
+                        unified_item_data['物品名称'].insert(0, item.name)
+                        unified_item_data['时间'].insert(0, item.timestamp)
+                        unified_item_data['日期'].insert(0, item.date)
+                        unified_item_data['归属配置组'].insert(0, item.config_group or '')
 
-        # 更新实例变量
-        self.duration_datadict = duration_data
-        self.item_datadict = item_data
+        # 按日期降序排列（最新的日期在前面）
+        sorted_dates = sorted(date_duration_dict.keys(), reverse=True)
+        
+        # 直接存储字典格式，避免列表顺序问题
+        # duration_datadict 存储为 {日期: 持续时间} 的字典格式
+        self.duration_datadict = date_duration_dict
+        self.item_datadict = unified_item_data
         
         # 获取有数据的日期列表
-        filtered_logs = duration_data['日期']
+        filtered_logs = sorted(date_duration_dict.keys(), reverse=True)
         self.log_list = filtered_logs
         
         return filtered_logs
 
     def get_duration_data(self) -> Dict:
         """
-        获取持续时间数据
+        获取持续时间数据，返回标准格式
         
         Returns:
-            Dict: 持续时间数据字典
+            Dict: 持续时间数据字典，格式为 {'日期': [...], '持续时间': [...]}
         """
         if not self.log_list:
             self.get_log_list()
-        return self.duration_datadict
+        
+        # 将内部存储的字典格式转换为标准返回格式
+        # 按日期降序排列（最新的日期在前面）
+        sorted_dates = sorted(self.duration_datadict.keys(), reverse=True)
+        
+        # 重新构建duration_data，确保日期和持续时间的对应关系
+        sorted_duration_data = {
+            '日期': sorted_dates,
+            '持续时间': [self.duration_datadict[date_str] for date_str in sorted_dates]
+        }
+        
+        return sorted_duration_data
 
     def get_item_data(self) -> Dict:
         """

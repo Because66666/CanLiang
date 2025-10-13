@@ -2,7 +2,7 @@
 视图模块
 路由映射：定义URL与处理函数的关联
 """
-from flask import Blueprint, jsonify, send_from_directory, request
+from flask import Blueprint, jsonify, send_from_directory, request , redirect
 from app.api.controllers import LogController, WebhookController
 import os
 
@@ -25,8 +25,18 @@ def init_controllers(log_dir: str):
     log_controller = LogController(log_dir)
     webhook_controller = WebhookController(log_dir)
 
-
 @api_bp.route('/')
+def index():
+    """
+    提供主页的API接口，自动跳转到/home路由。
+    
+    Returns:
+        Response: 重定向到/home路由
+    """
+
+    return redirect('/home')
+
+@api_bp.route('/home')
 def serve_index():
     """
     提供静态资源的路由，返回index.html文件。

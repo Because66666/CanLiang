@@ -68,7 +68,7 @@ def open_browser_after_start(port: int = 3000):
     def target():
         # 等待一段时间，确保Flask服务器完全启动
         time.sleep(2)
-        url = f'http://127.0.0.1:{port}'
+        url = f'http://127.0.0.1:{port}/home'
         try:
             subprocess.run(['start', url], shell=True, check=True)
             logger.info(f"成功启动浏览器并导航到 {url}")

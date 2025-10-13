@@ -232,3 +232,26 @@ export interface TrendDataResponse {
 export interface DownloadDataResponse {
   [key: string]: string
 }
+
+/**
+ * Webhook数据项接口
+ */
+export interface WebhookDataItem {
+  id: number
+  event: string
+  result?: string
+  timestamp?: string
+  screenshot?: string
+  create_time: string
+  message?: string
+}
+
+/**
+ * Webhook数据响应接口
+ */
+export interface WebhookDataResponse {
+  success: boolean
+  data: WebhookDataItem[]
+  count: number
+  message?: string
+}

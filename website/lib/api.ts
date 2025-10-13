@@ -1,7 +1,7 @@
 // API服务层 - 处理所有的API请求
 
 import { promises } from 'dns'
-import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict } from '../types/inventory'
+import { InventoryData, DateItem, ItemTrendData, ItemDataDict, DurationDict, WebhookDataResponse } from '../types/inventory'
 
 // API基础配置
 const BASE_URL = process.env.NODE_ENV === 'production' ? '/' : 'http://localhost:3001/'
@@ -65,6 +65,34 @@ class ApiService {
     } catch (error) {
       console.error('Error fetching data:', error)
       throw new Error('获取数据失败，请稍后再试')
+    }
+  }
+
+  /**
+   * 获取webhook数据列表
+   * @param limit 返回记录数限制，默认100
+   * @returns Promise<WebhookDataResponse> webhook数据响应
+   */
+  async fetchWebhookData(limit: number = 100): Promise<WebhookDataResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}api/webhook-data?limit=${limit}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const responseData = await response.json()
+      
+      // 确保返回的数据结构符合预期
+      return {
+        success: responseData.success || true,
+        data: responseData.data || [],
+        count: responseData.count || 0,
+        message: responseData.message
+      }
+    } catch (error) {
+      console.error('Error fetching webhook data:', error)
+      throw new Error('获取webhook数据失败，请稍后再试')
     }
   }
 }

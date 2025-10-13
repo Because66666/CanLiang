@@ -172,15 +172,15 @@ class DatabaseManager:
             logger.error(f"获取存储日期时发生错误: {e}")
             return []
     
-    def get_duration_data(self, exclude_today: bool = True) -> Dict[str, List]:
+    def get_duration_data(self, exclude_today: bool = True) -> Dict[str, int]:
         """
-        获取持续时间数据
+        获取持续时间数据，返回字典格式（日期->持续时间）
         
         Args:
             exclude_today: 是否排除今天的数据
             
         Returns:
-            Dict[str, List]: 包含日期和持续时间的字典
+            Dict[str, int]: 日期到持续时间的映射字典
         """
         try:
             with self.get_connection() as conn:
@@ -194,28 +194,25 @@ class DatabaseManager:
                     query += ' WHERE date_str != ?'
                     params.append(today)
                 
-                query += ' ORDER BY date_str DESC'
-                
+                # 取消排序，直接返回数据库中的原始顺序
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
                 
-                return {
-                    '日期': [row[0] for row in rows],
-                    '持续时间': [row[1] for row in rows]
-                }
+                # 返回字典格式，确保日期和持续时间的一一对应
+                return {row[0]: row[1] for row in rows}
         except Exception as e:
             logger.error(f"获取持续时间数据时发生错误: {e}")
-            return {'日期': [], '持续时间': []}
+            return {}
     
-    def get_item_data(self, exclude_today: bool = True) -> Dict[str, List]:
+    def get_item_data(self, exclude_today: bool = True) -> Dict[str, Dict[str, List]]:
         """
-        获取物品数据
+        获取物品数据，返回字典格式（日期->物品信息）
         
         Args:
             exclude_today: 是否排除今天的数据
             
         Returns:
-            Dict[str, List]: 包含物品信息的字典
+            Dict[str, Dict[str, List]]: 日期到物品信息的映射字典
         """
         try:
             with self.get_connection() as conn:
@@ -232,20 +229,28 @@ class DatabaseManager:
                     query += ' WHERE date_str != ?'
                     params.append(today)
                 
-                query += ' ORDER BY date_str DESC, timestamp DESC'
-                
+                # 取消排序，直接返回数据库中的原始顺序
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
                 
-                return {
-                    '物品名称': [row[0] for row in rows],
-                    '时间': [row[1] for row in rows],
-                    '日期': [row[2] for row in rows],
-                    '归属配置组': [row[3] or '' for row in rows]
-                }
+                # 按日期分组返回字典格式
+                result = {}
+                for row in rows:
+                    name, timestamp, date_str, config_group = row
+                    if date_str not in result:
+                        result[date_str] = {
+                            '物品名称': [],
+                            '时间': [],
+                            '归属配置组': []
+                        }
+                    result[date_str]['物品名称'].append(name)
+                    result[date_str]['时间'].append(timestamp)
+                    result[date_str]['归属配置组'].append(config_group or '')
+                
+                return result
         except Exception as e:
             logger.error(f"获取物品数据时发生错误: {e}")
-            return {'物品名称': [], '时间': [], '日期': [], '归属配置组': []}
+            return {}
     
     def get_log_file_info(self, date_str: str) -> Optional[Dict]:
         """

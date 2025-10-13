@@ -62,10 +62,10 @@ class LogController:
             duration_data = self.log_manager.get_duration_data()
             item_data = self.log_manager.get_item_data()
             
-            if check_dict_empty(duration_data) or check_dict_empty(item_data):
-                self.log_manager.get_log_list()
-                duration_data = self.log_manager.get_duration_data()
-                item_data = self.log_manager.get_item_data()
+            # if check_dict_empty(duration_data) or check_dict_empty(item_data):
+            #     self.log_manager.get_log_list()
+            #     duration_data = self.log_manager.get_duration_data()
+            #     item_data = self.log_manager.get_item_data()
             
             return {
                 'duration': duration_data,
