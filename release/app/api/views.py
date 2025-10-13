@@ -3,7 +3,7 @@
 路由映射：定义URL与处理函数的关联
 """
 from flask import Blueprint, jsonify, send_from_directory, request , redirect
-from app.api.controllers import LogController, WebhookController
+from app.api.controllers import LogController, WebhookController, StreamController
 import os
 
 # 创建蓝图
@@ -12,6 +12,7 @@ api_bp = Blueprint('api', __name__)
 # 全局控制器实例（将在应用启动时初始化）
 log_controller = None
 webhook_controller = None
+stream_controller = None
 
 
 def init_controllers(log_dir: str):
@@ -21,22 +22,14 @@ def init_controllers(log_dir: str):
     Args:
         log_dir: 日志目录路径
     """
-    global log_controller, webhook_controller
+    global log_controller, webhook_controller, stream_controller
     log_controller = LogController(log_dir)
     webhook_controller = WebhookController(log_dir)
+    # stream_controller将在首次请求时动态创建
+
+
 
 @api_bp.route('/')
-def index():
-    """
-    提供主页的API接口，自动跳转到/home路由。
-    
-    Returns:
-        Response: 重定向到/home路由
-    """
-
-    return redirect('/home')
-
-@api_bp.route('/home')
 def serve_index():
     """
     提供静态资源的路由，返回index.html文件。
@@ -45,6 +38,39 @@ def serve_index():
         Response: index.html文件响应
     """
     return send_from_directory('static', 'index.html')
+
+@api_bp.route('/home')
+def serve_home():
+    """
+    提供静态资源的路由，返回 home.html文件。
+    
+    Returns:
+        Response: home.html文件响应
+    """
+    return send_from_directory('static', 'home.html')
+
+@api_bp.route('/about')
+def serve_about():
+    """
+    提供静态资源的路由，返回 about.html文件。
+    
+    Returns:
+        Response: about.html文件响应
+    """
+    return send_from_directory('static', 'about.html')
+
+@api_bp.route('/webinfo')
+def serve_webinfo():
+    """
+    提供静态资源的路由，返回 webinfo.html文件。
+    
+    Returns:
+        Response: webinfo.html文件响应
+    """
+    return send_from_directory('static', 'webinfo.html')
+
+
+
 
 
 @api_bp.route('/<path:filename>')
@@ -131,6 +157,99 @@ def webhook():
         }), 500
 
 
+@api_bp.route('/api/stream', methods=['GET'])
+def video_stream():
+    """
+    视频流API接口，提供实时屏幕推流
+    支持通过查询参数?app=xxx动态指定目标应用程序
+    
+    Returns:
+        Response: MJPEG视频流响应或JSON错误响应
+    """
+    global stream_controller
+    
+    # 获取查询参数中的app参数
+    target_app = request.args.get('app', '').strip()
+    
+    # 参数验证
+    if not target_app:
+        return jsonify({
+            'error': '缺少必需的参数',
+            'message': '请通过查询参数?app=应用程序名称指定目标应用程序',
+            'example': '/api/stream?app=yuanshen.exe'
+        }), 400
+    
+    # 验证应用程序名称格式
+    if not target_app.endswith('.exe'):
+        return jsonify({
+            'error': '参数格式错误',
+            'message': '应用程序名称必须以.exe结尾',
+            'provided': target_app,
+            'example': 'yuanshen.exe'
+        }), 400
+    
+    try:
+        # 检查是否需要重新初始化stream_controller
+        if not stream_controller or stream_controller.target_app != target_app:
+            # 如果当前有推流在进行，先停止
+            if stream_controller and stream_controller.is_streaming:
+                stream_controller.stop_stream()
+            
+            # 重新初始化推流控制器
+            stream_controller = StreamController(target_app)
+        
+        return stream_controller.start_stream()
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'启动视频流时发生错误: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/api/stream/info', methods=['GET'])
+def get_stream_info():
+    """
+    获取推流信息的API接口
+    
+    Returns:
+        Response: 包含推流状态信息的JSON响应
+    """
+    if not stream_controller:
+        return jsonify({'error': '推流控制器未初始化'}), 500
+    
+    try:
+        result = stream_controller.get_stream_info()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'error': f'获取推流信息时发生错误: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/api/stream/stop', methods=['POST'])
+def stop_stream():
+    """
+    停止推流的API接口
+    
+    Returns:
+        Response: 操作结果的JSON响应
+    """
+    if not stream_controller:
+        return jsonify({'error': '推流控制器未初始化'}), 500
+    
+    try:
+        stream_controller.stop_stream()
+        return jsonify({
+            'success': True,
+            'message': '推流已停止'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'停止推流时发生错误: {str(e)}'
+        }), 500
+
+
 @api_bp.route('/api/webhook-data', methods=['GET'])
 def get_webhook_data():
     """
@@ -156,4 +275,47 @@ def get_webhook_data():
             'message': f'获取数据时发生错误: {str(e)}',
             'data': [],
             'count': 0
+        }), 500
+
+
+@api_bp.route('/api/programlist', methods=['GET'])
+def get_program_list():
+    """
+    获取当前桌面上可以被推流的程序窗口列表的API接口
+    
+    Returns:
+        Response: 包含程序列表的JSON响应，格式为：{
+            'success': True,
+            'data': ['program1.exe', 'program2.exe', ...],
+            'count': 程序数量
+        }
+    """
+    try:
+        # 创建临时的StreamController实例来获取程序列表
+        temp_controller = StreamController()
+        programs = temp_controller.get_available_programs()
+
+        # 创建允许的程序列表
+        allowed_programs = [
+            'yuanshen.exe',
+            'bettergi.exe'
+        ]
+        programs = [program for program in programs if program in allowed_programs]
+
+        # 自定义的桌面映射
+        programs.append('桌面.exe')
+        
+        return jsonify({
+            'success': True,
+            'data': programs,
+            'count': len(programs),
+            'message': f'成功获取到 {len(programs)} 个可推流的程序'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'data': [],
+            'count': 0,
+            'message': f'获取程序列表时发生错误: {str(e)}'
         }), 500

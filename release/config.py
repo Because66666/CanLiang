@@ -39,7 +39,7 @@ def load_env_file(environment='production'):
     if os.path.exists(env_file):
         # 使用override=True来覆盖已存在的环境变量
         load_dotenv(env_file, override=True)
-        print(f"已加载环境配置文件: {env_file}")
+        # print(f"已加载环境配置文件: {env_file}")
     else:
         print(f"警告: 环境配置文件 {env_file} 不存在")
 

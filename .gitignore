@@ -1,7 +1,6 @@
 .bettergi_init_completed
 .idea/
-server/.venv/
-mini/.venv/
+.venv/
 website/output/
 website/node_modules/
 release/build/Canliang
@@ -32,3 +31,6 @@ next-env.d.ts
 
 # python运行时产生的临时文件
 __pycache__/
+
+# 以前的旧版本
+old_versions/

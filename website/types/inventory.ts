@@ -255,3 +255,30 @@ export interface WebhookDataResponse {
   count: number
   message?: string
 }
+
+/**
+ * 程序列表响应接口
+ */
+export interface ProgramListResponse {
+  success: boolean
+  data: string[]
+  count: number
+  message?: string
+}
+
+/**
+ * 视频流配置接口
+ */
+export interface VideoStreamConfig {
+  app: string  // 目标应用程序名称，如 'yuanshen.exe'
+}
+
+/**
+ * 视频流错误响应接口
+ */
+export interface VideoStreamErrorResponse {
+  error: string
+  message: string
+  provided?: string
+  example?: string
+}

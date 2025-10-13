@@ -168,14 +168,12 @@ class LogDataManager:
             logger.error(f"读取文件 {file_path} 时发生未知错误: {e}")
             return None
 
-    def get_log_list(self) -> List[str]:
+    def _get_historical_data(self) -> tuple[Dict[str, float], Dict[str, Dict[str, List]]]:
         """
-        获取日志文件列表，并过滤掉不包含交互物品的日志文件。
-        使用智能加载策略：优先从数据库读取，然后补充缺失的文件数据
-        更新duration_datadict, item_datadict两个实例变量
-
+        获取历史数据（不包括今天的数据）
+        
         Returns:
-            List[str]: 过滤后的日志文件名列表
+            tuple: (duration_data, item_data) 历史持续时间数据和物品数据
         """
         # 获取所有以'better-genshin-impact'开头的日志文件，并提取日期部分
         log_files = [f.replace('better-genshin-impact', '').replace('.log', '')
@@ -185,14 +183,13 @@ class LogDataManager:
         # 获取数据库中已存储的日期
         stored_dates = set(self.db_manager.get_stored_dates())
         
-        # 找出需要处理的文件（数据库中没有的或者是今天的文件）
+        # 找出需要处理的历史文件（数据库中没有的且不是今天的文件）
         files_to_process = []
         for file_date in log_files:
-            if file_date not in stored_dates or file_date == self.today_str:
+            if file_date not in stored_dates and file_date != self.today_str:
                 files_to_process.append(file_date)
 
-        # 处理需要解析的文件
-        new_data_processed = False
+        # 处理需要解析的历史文件
         for file_date in files_to_process:
             file_path = os.path.join(self.log_dir, f"better-genshin-impact{file_date}.log")
             result = self.read_log_file(file_path, file_date)
@@ -207,23 +204,65 @@ class LogDataManager:
 
             # 只处理有物品的日志
             if items:
-                # 如果不是今天的数据，存储到数据库
-                if file_date != self.today_str:
-                    item_list = [
-                        {
-                            'name': item.name,
-                            'timestamp': item.timestamp,
-                            'config_group': item.config_group
-                        }
-                        for item in result.items
-                    ]
-                    self.db_manager.insert_log_file_data(file_date, result.duration, item_list)
-                
-                new_data_processed = True
+                # 存储到数据库
+                item_list = [
+                    {
+                        'name': item.name,
+                        'timestamp': item.timestamp,
+                        'config_group': item.config_group
+                    }
+                    for item in result.items
+                ]
+                self.db_manager.insert_log_file_data(file_date, result.duration, item_list)
 
-        # 从数据库加载所有数据（排除今天）
+        # 从数据库加载所有历史数据（排除今天）
         duration_data = self.db_manager.get_duration_data(exclude_today=True)
         item_data = self.db_manager.get_item_data(exclude_today=True)
+        
+        return duration_data, item_data
+
+    def _get_today_data(self) -> tuple[float, List]:
+        """
+        获取今天的数据
+        
+        Returns:
+            tuple: (duration, items) 今天的持续时间和物品列表，如果没有数据则返回(0, [])
+        """
+        # 清空缓存，因为需要重新读取今天的数据
+        self.item_cached_list = []
+        
+        today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
+        
+        if not os.path.exists(today_file_path):
+            return 0, []
+            
+        today_result = self.read_log_file(today_file_path, self.today_str)
+        if not today_result:
+            return 0, []
+
+        # 过滤掉不需要的物品
+        today_items = today_result.item_count.copy()
+        for forbidden_item in FORBIDDEN_ITEMS:
+            if forbidden_item in today_items:
+                del today_items[forbidden_item]
+        
+        # 如果今天有有效物品，返回数据
+        if today_items:
+            return today_result.duration, today_result.items
+        else:
+            return 0, []
+
+    def get_log_list(self) -> List[str]:
+        """
+        获取日志文件列表，并过滤掉不包含交互物品的日志文件。
+        使用智能加载策略：优先从数据库读取，然后补充缺失的文件数据
+        更新duration_datadict, item_datadict两个实例变量
+
+        Returns:
+            List[str]: 过滤后的日志文件名列表
+        """
+        # 获取历史数据
+        duration_data, item_data = self._get_historical_data()
         
         # 数据库返回的已经是字典格式，直接使用
         date_duration_dict = duration_data.copy()
@@ -244,30 +283,20 @@ class LogDataManager:
                 unified_item_data['日期'].append(date_str)
                 unified_item_data['归属配置组'].append(items['归属配置组'][i])
         
-        # 如果今天有数据，单独处理今天的数据并合并
-        today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
-        self.item_cached_list = [] # 清空缓存。因为在上一步骤中包含了今天的缓存数据。
-        # 需要清空缓存数据
-        if os.path.exists(today_file_path):
-            today_result = self.read_log_file(today_file_path, self.today_str)
-            if today_result:
-                # 过滤掉不需要的物品
-                today_items = today_result.item_count.copy()
-                for forbidden_item in FORBIDDEN_ITEMS:
-                    if forbidden_item in today_items:
-                        del today_items[forbidden_item]
-                
-                # 如果今天有有效物品，添加到结果中
-                if today_items:
-                    # 将今天的数据添加到字典中
-                    date_duration_dict[self.today_str] = today_result.duration
-                    
-                    # 添加今天的物品数据
-                    for item in today_result.items:
-                        unified_item_data['物品名称'].insert(0, item.name)
-                        unified_item_data['时间'].insert(0, item.timestamp)
-                        unified_item_data['日期'].insert(0, item.date)
-                        unified_item_data['归属配置组'].insert(0, item.config_group or '')
+        # 获取今天的数据
+        today_duration, today_items = self._get_today_data()
+        
+        # 如果今天有数据，添加到结果中
+        if today_duration > 0 and today_items:
+            # 将今天的数据添加到字典中
+            date_duration_dict[self.today_str] = today_duration
+            
+            # 添加今天的物品数据（插入到最前面）
+            for item in today_items:
+                unified_item_data['物品名称'].insert(0, item.name)
+                unified_item_data['时间'].insert(0, item.timestamp)
+                unified_item_data['日期'].insert(0, item.date)
+                unified_item_data['归属配置组'].insert(0, item.config_group or '')
 
         # 按日期降序排列（最新的日期在前面）
         sorted_dates = sorted(date_duration_dict.keys(), reverse=True)
@@ -290,8 +319,8 @@ class LogDataManager:
         Returns:
             Dict: 持续时间数据字典，格式为 {'日期': [...], '持续时间': [...]}
         """
-        if not self.log_list:
-            self.get_log_list()
+        # if not self.log_list: 无视之前数据，强制刷新今天数据
+        self.get_log_list() 
         
         # 将内部存储的字典格式转换为标准返回格式
         # 按日期降序排列（最新的日期在前面）
@@ -312,6 +341,7 @@ class LogDataManager:
         Returns:
             Dict: 物品数据字典
         """
-        if not self.log_list:
-            self.get_log_list()
+        # if not self.log_list:
+        # 无视之前数据，强制刷新今天数据
+        self.get_log_list()
         return self.item_datadict

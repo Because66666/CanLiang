@@ -14,7 +14,9 @@ import {
   CheckCircle,
   Settings,
   Database,
-  MessageSquare
+  MessageSquare,
+  Github,
+  ExternalLink
 } from "lucide-react"
 
 /**
@@ -158,6 +160,21 @@ export default function AboutPage() {
                       Because66666
                     </Badge>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <Github className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                    <div>
+                      <h3 className="font-semibold mb-1">GitHub项目</h3>
+                      <a 
+                        href="https://github.com/Because66666/CanLiang" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors flex items-center gap-1"
+                      >
+                        Because66666/CanLiang
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Scale className="w-5 h-5 text-gray-500" />
@@ -195,7 +212,7 @@ export default function AboutPage() {
                 <div className="flex justify-center">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <img
-                      src="https://github.com/user-attachments/assets/b200ecb2-aaa3-48b1-a8e2-7d14abe1750c"
+                      src="/donate.jpg"
                       alt="捐赠二维码"
                       className="w-48 h-48 object-contain rounded-md"
                       loading="lazy"

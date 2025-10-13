@@ -2,15 +2,72 @@
 
 
 a = Analysis(
-    ['app.py'],
+    ['run.py'],
     pathex=[],
     binaries=[],
-    datas=[('static', 'static')],
-    hiddenimports=[],
+    datas=[
+        ('app/static', 'app/static'),  # 静态文件目录
+        ('favicon.ico', '.'),          # 图标文件
+        ('config.py', '.'),            # 配置文件
+        ('files', 'files'),            # 数据文件目录
+        ('.env.production', '.'),      # 生产环境配置文件
+    ],
+    hiddenimports=[
+        'flask',
+        'numpy', 
+        'numpy.core',
+        'numpy.core._multiarray_umath',
+        'numpy.core._multiarray_tests',
+        'numpy.linalg._umath_linalg',
+        'numpy.random._common',
+        'numpy.random.bit_generator',
+        'numpy.random._bounded_integers',
+        'numpy.random._mt19937',
+        'numpy.random.mtrand',
+        'numpy.random._philox',
+        'numpy.random._pcg64',
+        'numpy.random._sfc64',
+        'cv2',
+        'cv2.cv2',
+        'win32gui',
+        'win32ui',
+        'win32con',
+        'win32api',
+        'win32process',
+        'psutil',
+        'sqlite3',
+        'threading',
+        'logging',
+        'argparse',
+        'dataclasses',
+        'contextlib',
+        'subprocess',
+        'app',
+        'app.api',
+        'app.api.controllers',
+        'app.api.views',
+        'app.domain',
+        'app.domain.entities',
+        'app.infrastructure',
+        'app.infrastructure.database',
+        'app.infrastructure.manager',
+        'app.infrastructure.utils',
+    ],
     hookspath=[],
-    hooksconfig={},
+    hooksconfig={
+        'cv2': {
+            'module_collection_mode': 'pyz+py',
+        },
+    },
     runtime_hooks=[],
-    excludes = [],
+    excludes=[
+        'matplotlib',
+        'tkinter',
+        'PyQt5',
+        'PyQt6',
+        'PySide2',
+        'PySide6',
+    ],
     noarchive=False,
     optimize=0,
 )
@@ -35,5 +92,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\python\\CanLiang\\release\\favicon.ico'],
+    icon='favicon.ico',
 )

@@ -39,8 +39,8 @@ def parse_arguments():
     parser.add_argument('-env', '--environment', default='production', 
                        choices=['development', 'production', 'testing'],
                        help='运行环境 (development/production/testing)，默认为production')
-    parser.add_argument('-no', '--do_not_open_website', action='store_true', 
-                       help='默认启动时打开网页，传递此参数以禁用')
+    # parser.add_argument('-no', '--do_not_open_website', action='store_true', 
+    #                    help='默认启动时打开网页，传递此参数以禁用')
     return parser.parse_args()
 
 
@@ -73,40 +73,73 @@ def main():
     """
     主函数，启动Flask应用
     """
-    # 解析命令行参数
-    args = parse_arguments()
+    try:
+        # 解析命令行参数
+        args = parse_arguments()
+        
+        # 设置BetterGI安装路径
+        install_path = setup_bgi_path(args.bgi_path)
+        bgi_log_dir = os.path.join(install_path, 'log')
+        
+        # 根据环境参数创建Flask应用
+        app = create_app(args.environment)
+        
+        # 初始化配置
+        from config import config
+        config_class = config.get(args.environment, config['default'])
+        config_class.init_app(app)
+        
+        # 从配置实例获取端口
+        config_instance = config_class()
+        port = config_instance.PORT
+        
+        # 初始化控制器（不再需要target_app参数）
+        init_controllers(bgi_log_dir)
+        
+        # 如果不禁用，则启动浏览器
+        # if not args.do_not_open_website:
+        #     open_browser_after_start(port)
+        
+        # 启动Flask应用
+        logger.info(f"启动Flask应用，环境: {args.environment}，端口: {port}")
+        app.run(
+            debug=config_instance.DEBUG,
+            host=config_instance.HOST,
+            port=port,
+            use_reloader=False
+        )
+        
+    except KeyboardInterrupt:
+        logger.info("接收到键盘中断信号，正在清理资源...")
+        cleanup_resources()
+        logger.info("资源清理完成，程序退出")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"程序运行时发生错误: {e}")
+        cleanup_resources()
+        sys.exit(1)
+
+
+def cleanup_resources():
+    """
+    清理资源的函数
+    """
+    try:
+        # 导入并清理推流控制器
+        from app.api.views import stream_controller
+        if stream_controller and stream_controller.is_streaming:
+            logger.info("正在停止推流...")
+            stream_controller.stop_stream()
+            logger.info("推流已停止")
+    except Exception as e:
+        logger.error(f"清理推流资源时发生错误: {e}")
     
-    # 设置BetterGI安装路径
-    install_path = setup_bgi_path(args.bgi_path)
-    bgi_log_dir = os.path.join(install_path, 'log')
-    
-    # 根据环境参数创建Flask应用
-    app = create_app(args.environment)
-    
-    # 初始化配置
-    from config import config
-    config_class = config.get(args.environment, config['default'])
-    config_class.init_app(app)
-    
-    # 从配置实例获取端口
-    config_instance = config_class()
-    port = config_instance.PORT
-    
-    # 初始化控制器
-    init_controllers(bgi_log_dir)
-    
-    # 如果不禁用，则启动浏览器
-    if not args.do_not_open_website:
-        open_browser_after_start(port)
-    
-    # 启动Flask应用
-    logger.info(f"启动Flask应用，环境: {args.environment}，端口: {port}")
-    app.run(
-        debug=config_instance.DEBUG,
-        host=config_instance.HOST,
-        port=port,
-        use_reloader=False
-    )
+    try:
+        # 清理其他可能的资源
+        logger.info("清理其他资源...")
+        # 这里可以添加其他需要清理的资源
+    except Exception as e:
+        logger.error(f"清理其他资源时发生错误: {e}")
 
 
 if __name__ == "__main__":

@@ -41,10 +41,10 @@ export function GlassSidebar({ className }: GlassSidebarProps) {
       description: "数据概览和统计"
     },
     {
-      title: "BetterGI信息流",
+      title: "BetterGI面板",
       href: "/webinfo", 
       icon: MessageSquare,
-      description: "BetterGI的Webhook支持"
+      description: "消息通知与实时屏看"
     },
     {
       title: "关于",
