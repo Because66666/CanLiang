@@ -48,6 +48,12 @@
 
 项目中关于这两个库的使用集中在`release/app/api/controllers.py`中，主要用于捕获指定程序的视频流并传输到浏览器中。
 
+**高级**：
+
+支持参数：-bgi 自定义BetterGI安装路径（默认：自动检测）
+
+例如：`Canliang.exe -bgi "C:\Program Files (x86)\Genshin Impact"`
+
 
 ## 项目结构
 
