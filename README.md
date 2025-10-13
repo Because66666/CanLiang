@@ -27,8 +27,8 @@
 
 ### 界面截图
 
-<img src="https://github.com/user-attachments/assets/a67d635f-0922-454f-89c2-08237a86699f" alt="示例图片" width="100%">
 <img src="screenshots/output_20251013.png" alt="示例图片" width="100%">
+<img src="screenshots/20251014-000135.jpg" alt="示例图片" width="100%">
 
 
 ### 致谢提交PR的合作开发者
