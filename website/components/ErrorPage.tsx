@@ -90,7 +90,6 @@ export function ErrorPage({
   }
 }: ErrorPageProps) {
   const config = getErrorConfig(type)
-  const IconComponent = config.icon
 
   return (
     <div className={`flex h-screen items-center justify-center ${className}`}>
@@ -98,76 +97,62 @@ export function ErrorPage({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-md mx-4"
+        className="w-full max-w-md mx-4 text-center"
       >
-        <Card className={`${config.bgColor} ${config.borderColor} border-2`}>
-          <CardContent className="p-8 text-center">
-            {/* 错误图片 */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mb-4"
+        {/* 错误图片 */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-4"
+        >
+          <img 
+            src="/error.jpg" 
+            alt="错误提示图片"
+            className="w-64 h-64 mx-auto object-contain"
+          />
+        </motion.div>
+        
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-2xl font-bold mb-4 text-center"
+          style={{ color: colors.secondary }}
+        >
+          {config.title}
+        </motion.h2>
+        
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-gray-600 mb-6 text-center"
+        >
+          {message || config.defaultMessage}
+        </motion.p>
+        
+        {showRefresh && onRefresh && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex justify-center"
+          >
+            <Button
+              onClick={onRefresh}
+              variant="outline"
+              className="flex items-center gap-2"
+              style={{ 
+                borderColor: colors.lightBorder,
+                color: colors.primary
+              }}
             >
-              <img 
-                src="/error.jpg" 
-                alt="错误提示图片"
-                className="w-24 h-24 mx-auto rounded-lg object-cover shadow-sm"
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="mb-6"
-            >
-              <IconComponent 
-                className={`w-16 h-16 mx-auto ${config.iconColor}`} 
-              />
-            </motion.div>
-            
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-2xl font-bold mb-4"
-              style={{ color: colors.secondary }}
-            >
-              {config.title}
-            </motion.h2>
-            
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-gray-600 mb-6"
-            >
-              {message || config.defaultMessage}
-            </motion.p>
-            
-            {showRefresh && onRefresh && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <Button
-                  onClick={onRefresh}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  style={{ 
-                    borderColor: colors.lightBorder,
-                    color: colors.primary
-                  }}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  重新加载
-                </Button>
-              </motion.div>
-            )}
-          </CardContent>
-        </Card>
+              <RefreshCw className="w-4 h-4" />
+              重新加载
+            </Button>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   )

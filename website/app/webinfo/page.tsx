@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Search, Clock, Globe, AlertCircle, CheckCircle, XCircle, Info, Play, Square, Monitor, RefreshCw } from "lucide-react"
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ErrorCard } from "@/components/ErrorPage"
 import { colors } from "@/lib/utils-inventory"
+import { notify } from "@/lib/notification"
 
 // 导入类型定义
 import { WebhookDataItem, WebhookDataResponse, ProgramListResponse, VideoStreamConfig } from "@/types/inventory"
@@ -105,6 +106,14 @@ const formatTimestamp = (timestamp?: string) => {
  * Webhook信息页面主组件
  */
 export default function WebInfoPage() {
+  // 错误显示状态跟踪
+  const errorShownRef = useRef({
+    webhookData: false,
+    programList: false,
+    systemInfo: false,
+    videoStream: false
+  })
+
   const [state, setState] = useState<WebInfoPageState>({
     data: [],
     loading: true,
@@ -163,6 +172,12 @@ export default function WebInfoPage() {
           error: response.message || '获取程序列表失败', 
           loading: false 
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.programList) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.programList = true
+        }
       }
     } catch (error) {
       setStreamState(prev => ({ 
@@ -170,6 +185,12 @@ export default function WebInfoPage() {
         error: error instanceof Error ? error.message : '网络错误', 
         loading: false 
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.programList) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.programList = true
+      }
     }
   }
 
@@ -198,12 +219,24 @@ export default function WebInfoPage() {
           ...prev, 
           error: '启动推流失败'
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.videoStream) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.videoStream = true
+        }
       }
     } catch (error) {
       setStreamState(prev => ({ 
         ...prev, 
         error: error instanceof Error ? error.message : '网络错误'
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.videoStream) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.videoStream = true
+      }
     }
   }
 
@@ -238,6 +271,12 @@ export default function WebInfoPage() {
           error: '启动推流失败', 
           loading: false 
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.videoStream) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.videoStream = true
+        }
       }
     } catch (error) {
       setStreamState(prev => ({ 
@@ -245,6 +284,12 @@ export default function WebInfoPage() {
         error: error instanceof Error ? error.message : '网络错误', 
         loading: false 
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.videoStream) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.videoStream = true
+      }
     }
   }
 
@@ -258,6 +303,9 @@ export default function WebInfoPage() {
       streamUrl: '',
       error: null
     }))
+    
+    // 关闭视频流
+    apiService.closeVideoStream()
   }
 
 
@@ -282,6 +330,12 @@ export default function WebInfoPage() {
           error: response.message || '获取数据失败', 
           loading: false 
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.webhookData) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.webhookData = true
+        }
       }
     } catch (error) {
       setState(prev => ({ 
@@ -289,6 +343,12 @@ export default function WebInfoPage() {
         error: error instanceof Error ? error.message : '网络错误', 
         loading: false 
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.webhookData) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.webhookData = true
+      }
     }
   }
 
@@ -313,6 +373,12 @@ export default function WebInfoPage() {
           error: response.message || '获取系统信息失败', 
           loading: false 
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.systemInfo) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.systemInfo = true
+        }
       }
     } catch (error) {
       setSystemInfo(prev => ({ 
@@ -320,6 +386,12 @@ export default function WebInfoPage() {
         error: error instanceof Error ? error.message : '网络错误', 
         loading: false 
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.systemInfo) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.systemInfo = true
+      }
     }
   }
 
@@ -341,12 +413,24 @@ export default function WebInfoPage() {
           ...prev, 
           error: response.message || '获取数据失败', 
         }))
+        
+        // 显示错误通知（只显示一次）
+        if (!errorShownRef.current.webhookData) {
+          notify.error('网络错误，请刷新后重试')
+          errorShownRef.current.webhookData = true
+        }
       }
     } catch (error) {
       setState(prev => ({ 
         ...prev, 
         error: error instanceof Error ? error.message : '网络错误', 
       }))
+      
+      // 显示错误通知（只显示一次）
+      if (!errorShownRef.current.webhookData) {
+        notify.error('网络错误，请刷新后重试')
+        errorShownRef.current.webhookData = true
+      }
     }
   }
 
@@ -366,6 +450,49 @@ export default function WebInfoPage() {
 
     return () => clearInterval(interval) // 清理定时器
   }, [state.limit])
+
+  /**
+   * 组件卸载时清理资源
+   * 当用户切换界面时主动断开视频流连接
+   */
+  useEffect(() => {
+    return () => {
+      // 组件卸载时停止视频流
+      // 使用ref来获取最新的状态，避免闭包问题
+      console.log('组件卸载，主动断开视频流连接')
+      stopVideoStream()
+    }
+  }, [])
+
+  /**
+   * 页面可见性检测
+   * 当用户切换标签页时暂停/恢复视频流
+   */
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // 页面隐藏时暂停视频流
+        if (streamState.isStreaming) {
+          console.log('页面隐藏，暂停视频流')
+          stopVideoStream()
+        }
+      } else {
+        // 页面显示时恢复视频流（如果之前有选中的程序）
+        if (!streamState.isStreaming && streamState.selectedProgram) {
+          console.log('页面显示，恢复视频流')
+          startVideoStreamAuto(streamState.selectedProgram)
+        }
+      }
+    }
+
+    // 添加页面可见性变化监听器
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // 清理监听器
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [streamState.isStreaming, streamState.selectedProgram])
 
   /**
    * 过滤数据
@@ -549,6 +676,12 @@ export default function WebInfoPage() {
                             ...prev, 
                             error: '视频流连接失败，请检查网络连接' 
                           }))
+                          
+                          // 显示错误通知（只显示一次）
+                          if (!errorShownRef.current.videoStream) {
+                            notify.error('网络错误，请刷新后重试')
+                            errorShownRef.current.videoStream = true
+                          }
                         }}
                         onLoad={() => {
                           console.log('视频流连接成功')
@@ -634,7 +767,7 @@ export default function WebInfoPage() {
                   </div>
 
                   {/* 刷新按钮 */}
-                  <div className="flex flex-col items-center gap-2 w-full">
+                  {/* <div className="flex flex-col items-center gap-2 w-full">
                     <button
                       onClick={fetchWebhookData}
                       disabled={state.loading}
@@ -649,7 +782,8 @@ export default function WebInfoPage() {
                     >
                       {state.loading ? '加载中...' : '刷新'}
                     </button>
-                  </div>
+                  </div> */}
+
                 </div>
               </CardContent>
             </Card>
@@ -671,7 +805,7 @@ export default function WebInfoPage() {
             </div>
 
             {/* 错误提示 */}
-            {state.error && (
+            {/* {state.error && (
               <ErrorCard
                 type="error"
                 message={state.error}
@@ -679,7 +813,7 @@ export default function WebInfoPage() {
                 onRefresh={fetchWebhookData}
                 className="mt-4"
               />
-            )}
+            )} */}
 
             {/* 数据列表 */}
             {!state.loading && filteredData.length === 0 && !state.error && (

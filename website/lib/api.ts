@@ -167,6 +167,36 @@ class ApiService {
       throw error
     }
   }
+  /**
+   * 关闭视频流
+   * @returns Promise<string> 视频流URL或错误信息
+   */
+  async closeVideoStream(): Promise<{success: boolean, message: string}> {
+    try {
+      const response = await fetch(`${this.baseUrl}api/stream/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const responseData = await response.json()
+      
+      // 确保返回的数据结构符合预期
+      return {
+        success: responseData.success || true,
+        message: responseData.message || '关闭视频流成功'
+      }
+      
+    } catch (error) {
+      console.error('Error validating stream config:', error)
+      throw error
+    }
+  }
 
   /**
    * 获取系统详细信息

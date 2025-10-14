@@ -484,70 +484,89 @@ class StreamController:
     def generate_frames(self):
         """
         生成视频帧的生成器函数
+        支持客户端断开连接自动停止推流
         
         Yields:
             bytes: MJPEG格式的视频帧
         """
-        # 查找目标窗口
-        if self.target_app == '桌面.exe':
-            self.hwnd = win32gui.GetDesktopWindow()
-        else:
-            self.hwnd = self.find_window_by_process_name(self.target_app)
-        
-        if not self.hwnd:
-            logger.warning(f"未找到进程 {self.target_app} 的窗口")
-            # 如果找不到窗口，返回黑屏
+        try:
+            # 查找目标窗口
+            if self.target_app == '桌面.exe':
+                self.hwnd = win32gui.GetDesktopWindow()
+            else:
+                self.hwnd = self.find_window_by_process_name(self.target_app)
+            
+            if not self.hwnd:
+                logger.warning(f"未找到进程 {self.target_app} 的窗口")
+                # 如果找不到窗口，返回黑屏
+                self.is_streaming = True
+                while self.is_streaming:
+                    try:
+                        # 返回黑屏
+                        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                        if ret:
+                            frame_bytes = buffer.tobytes()
+                            yield (b'--frame\r\n'
+                                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                        time.sleep(1/30)
+                    except GeneratorExit:
+                        # 客户端断开连接，主动停止推流
+                        logger.info(f"检测到客户端断开连接，停止推流 - 目标应用: {self.target_app}")
+                        self.is_streaming = False
+                        break
+                    except Exception as e:
+                        logger.error(f"生成黑屏帧时发生错误: {e}")
+                        time.sleep(0.1)
+                return
+
+            
             self.is_streaming = True
+            logger.info(f"开始推流 - 目标应用: {self.target_app}")
+            
             while self.is_streaming:
                 try:
-                    # 返回黑屏
-                    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                    # 重新验证窗口句柄有效性（窗口可能被关闭）
+                    if self.target_app != '桌面.exe':
+                        if not win32gui.IsWindow(self.hwnd) or not win32gui.IsWindowVisible(self.hwnd):
+                            logger.warning(f"窗口句柄 {self.hwnd} 已失效，重新查找窗口")
+                            self.hwnd = self.find_window_by_process_name(self.target_app)
+                            if not self.hwnd:
+                                logger.warning(f"无法重新找到进程 {self.target_app} 的窗口，返回黑屏")
+                                frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                                self.is_streaming = False
+                            else:
+                                frame = self.capture_window(self.hwnd)
+                        else:
+                            frame = self.capture_window(self.hwnd)
+                    else:
+                        # 桌面窗口
+                        frame = self.capture_window(self.hwnd)
+                    
+                    # 编码为JPEG
                     ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
                     if ret:
                         frame_bytes = buffer.tobytes()
                         yield (b'--frame\r\n'
                                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                    
+                    # 控制帧率（约30fps）
                     time.sleep(1/30)
+                    
+                except GeneratorExit:
+                    # 客户端断开连接，主动停止推流
+                    logger.info(f"检测到客户端断开连接，停止推流 - 目标应用: {self.target_app}")
+                    self.is_streaming = False
+                    break
                 except Exception as e:
-                    logger.error(f"生成黑屏帧时发生错误: {e}")
+                    logger.error(f"生成视频帧时发生错误: {e}")
                     time.sleep(0.1)
-            return
-
         
-        self.is_streaming = True
-        
-        while self.is_streaming:
-            try:
-                # 重新验证窗口句柄有效性（窗口可能被关闭）
-                if self.target_app != '桌面.exe':
-                    if not win32gui.IsWindow(self.hwnd) or not win32gui.IsWindowVisible(self.hwnd):
-                        logger.warning(f"窗口句柄 {self.hwnd} 已失效，重新查找窗口")
-                        self.hwnd = self.find_window_by_process_name(self.target_app)
-                        if not self.hwnd:
-                            logger.warning(f"无法重新找到进程 {self.target_app} 的窗口，返回黑屏")
-                            frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                            self.is_streaming = False
-                        else:
-                            frame = self.capture_window(self.hwnd)
-                    else:
-                        frame = self.capture_window(self.hwnd)
-                else:
-                    # 桌面窗口
-                    frame = self.capture_window(self.hwnd)
-                
-                # 编码为JPEG
-                ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                if ret:
-                    frame_bytes = buffer.tobytes()
-                    yield (b'--frame\r\n'
-                           b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                
-                # 控制帧率（约30fps）
-                time.sleep(1/30)
-                
-            except Exception as e:
-                logger.error(f"生成视频帧时发生错误: {e}")
-                time.sleep(0.1)
+        finally:
+            # 确保推流状态被正确设置为停止
+            if self.is_streaming:
+                self.is_streaming = False
+                logger.info(f"推流已停止 - 目标应用: {self.target_app}")
     
     def start_stream(self) -> Response:
         """
@@ -685,7 +704,7 @@ class StreamController:
             unique_programs = list(set(programs))
             unique_programs.sort()
             
-            logger.info(f"扫描完成，找到 {len(unique_programs)} 个可推流的程序: {unique_programs}")
+            logger.debug(f"扫描完成，找到 {len(unique_programs)} 个可推流的程序: {unique_programs}")
             return unique_programs
             
         except Exception as e:
