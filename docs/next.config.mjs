@@ -11,9 +11,9 @@ const nextConfig = {
   },
   distDir: 'output',
   output: 'export',
-  basePath: '/CanLiang', // GitHub Pages 子路径
-  assetPrefix: '/CanLiang/', // GitHub Pages 静态资源前缀，注意末尾的斜杠
-  trailingSlash: true, // 确保URL以斜杠结尾
+  // basePath: '/CanLiang', // GitHub Pages 子路径
+  // assetPrefix: '/CanLiang/', // GitHub Pages 静态资源前缀，注意末尾的斜杠
+  // trailingSlash: true, // 确保URL以斜杠结尾
   
   // 忽略node_modules和某些目录的监听，提高开发性能
   experimental: {
