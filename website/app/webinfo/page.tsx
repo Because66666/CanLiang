@@ -240,58 +240,6 @@ export default function WebInfoPage() {
     }
   }
 
-  /**
-   * 开始视频推流
-   */
-  const startVideoStream = async () => {
-    if (!streamState.selectedProgram) {
-      setStreamState(prev => ({ ...prev, error: '请先选择一个程序' }))
-      return
-    }
-
-    try {
-      setStreamState(prev => ({ ...prev, loading: true, error: null }))
-      
-      const config: VideoStreamConfig = {
-        app: streamState.selectedProgram
-      }
-      
-      const responseUrl:string = await apiService.getVideoStreamUrl(config)
-      
-      if (responseUrl) {
-        setStreamState(prev => ({ 
-          ...prev, 
-          isStreaming: true,
-          streamUrl: responseUrl,
-          loading: false 
-        }))
-      } else {
-        setStreamState(prev => ({ 
-          ...prev, 
-          error: '启动推流失败', 
-          loading: false 
-        }))
-        
-        // 显示错误通知（只显示一次）
-        if (!errorShownRef.current.videoStream) {
-          notify.error('网络错误，请刷新后重试')
-          errorShownRef.current.videoStream = true
-        }
-      }
-    } catch (error) {
-      setStreamState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : '网络错误', 
-        loading: false 
-      }))
-      
-      // 显示错误通知（只显示一次）
-      if (!errorShownRef.current.videoStream) {
-        notify.error('网络错误，请刷新后重试')
-        errorShownRef.current.videoStream = true
-      }
-    }
-  }
 
   /**
    * 停止视频推流
