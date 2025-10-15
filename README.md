@@ -10,6 +10,10 @@
 
 经测试，该程序能在Windows 11 24H2版本下正常运行，常驻内存消耗为70M左右。并且出于安全考虑，本项目仅在浏览器中提供信息展示服务，不涉及任何计算机控制与命令执行。你可以自由审查`release`目录下的所有文件。
 
+Demo网页：https://can-liang.vercel.app/home
+
+运行视频：https://www.bilibili.com/video/BV1uX4mzqEBx/
+
 **注意**：本项目开源，请勿用于商业用途。本项目遵循Apache-2.0 License许可证。
 
 ### 主要功能
