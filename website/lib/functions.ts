@@ -83,7 +83,7 @@ class AnalysisFunctions {
         }
       })
     }
-    console.log('finalItemData',finalItemData)
+    // console.log('finalItemData',finalItemData)
     // 统计物品数量
     finalItemData.ItemName.forEach((itemName) => {
       filteredItemCount[itemName] = (filteredItemCount[itemName] || 0) + 1
@@ -142,7 +142,7 @@ class AnalysisFunctions {
       duration: formattedDuration
     }
     // console.log('filteredData', finalItemData)
-    console.log('processedData', processedData)
+    // console.log('processedData', processedData)
     return { processedData, filteredData: finalItemData }
   }
 

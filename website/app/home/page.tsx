@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button"
 import { Download, X } from "lucide-react"
 import { analysistools } from "@/lib/functions"
+import { checkForUpdate } from "@/lib/version"
 
 // 导入类型定义
 import { 
@@ -71,6 +72,7 @@ export default function InventoryPage() {
   const [statModal, setStatModal] = useState<StatModalData | null>(null)
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
   const [downloadLoading, setDownloadLoading] = useState(false)
+  const [hasUpdate, setHasUpdate] = useState(false)
 
   // 使用导入的颜色常量
   // colors, categoryColors, rankingColors 已经从 utils-inventory 导入
@@ -203,6 +205,22 @@ export default function InventoryPage() {
     fetchDateList()
   }, [])
 
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const { hasUpdate } = await checkForUpdate('Because66666', 'CanLiang')
+        console.log('hasUpdate',hasUpdate)
+        if (active) setHasUpdate(hasUpdate)
+      } catch (e) {
+        // ignore network errors
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [])
+
   const handleSelectAll = () => {
     setSelectedDate('all')  // 设定一个特殊值来表示“全部”
     setSelectedTask('all')
@@ -242,7 +260,7 @@ export default function InventoryPage() {
         else {
           // 全部日期情况下，配置组应当包含所有可能的配置组
           let task_list = [...new Set(itemData.Task)].filter(task => task !== '')
-          console.log('task_list',task_list)
+          // console.log('task_list',task_list)
           task_list.unshift('all')
           setTaskList(task_list)
         }
@@ -348,7 +366,7 @@ export default function InventoryPage() {
           href="https://github.com/Because66666/CanLiang"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl"
+          className="relative flex items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all duration-300 hover:shadow-xl"
           style={{
             backgroundColor: colors.light,
             border: `2px solid ${colors.lightBorder}`,
@@ -368,6 +386,11 @@ export default function InventoryPage() {
           >
             <Github className="h-6 w-6" style={{ color: colors.secondary }} />
           </motion.div>
+          {hasUpdate && (
+            <span className="absolute -top-1 -right-1 bg-transparent text-red-500 text-[10px] px-1 rounded-full">
+              new
+            </span>
+          )}
         </motion.a>
       </motion.div>
 
@@ -633,7 +656,9 @@ export default function InventoryPage() {
                       <SelectValue placeholder="选择日期" />
                     </SelectTrigger>
                     <SelectContent>
-                      {dateList.map((date) => (
+                      {dateList
+                      .filter((date) => typeof date?.value === 'string' && date.value.trim() !== '')
+                      .map((date) => (
                         <SelectItem key={date.value} value={date.value}>
                           {date.label}
                         </SelectItem>
@@ -661,12 +686,14 @@ export default function InventoryPage() {
                       <SelectValue placeholder="all" />
                     </SelectTrigger>
                     <SelectContent>
-                      {taskList.map((task) => (
-                        <SelectItem key={task} value={task}>
-                          {task}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                      {taskList
+                        .filter((task) => typeof task === 'string' && task.trim() !== '')
+                        .map((task) => (
+                          <SelectItem key={task} value={task}>
+                            {task}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                   </Select>
               </div>
 
@@ -765,5 +792,7 @@ export default function InventoryPage() {
 }
 
 
+
+// TrendChart组件已移动到独立文件
 
 // TrendChart组件已移动到独立文件

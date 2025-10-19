@@ -9,7 +9,6 @@ a = Analysis(
         ('app/static', 'app/static'),  # 静态文件目录
         ('favicon.ico', '.'),          # 图标文件
         ('config.py', '.'),            # 配置文件
-        ('files', 'files'),            # 数据文件目录
         ('.env.production', '.'),      # 生产环境配置文件
     ],
     hiddenimports=[
