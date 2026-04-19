@@ -1,3 +1,6 @@
+"""
+旧版本，不再维护.
+"""
 import os.path
 import os
 import re

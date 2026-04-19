@@ -96,7 +96,8 @@ CanLiang/
 │   ├── lib/                  # 工具库和API客户端
 │   └── public/               # 公共资源
 ├── old_version/              # 历史版本存档
-└── screenshots/              # 项目截图
+├── screenshots/              # 项目截图
+└── write_down_the_response.py # 记录webhook响应的脚本（测试用）
 ```
 
 ### 架构说明
@@ -204,6 +205,27 @@ GET /api/webhook-data?limit=100
   "message": "获取数据成功"
 }
 ```
+#### webhook数据示例
+指的是BetterGI发送的webhook事件数据，示例格式如下：
+```json
+{
+    "send_to": "测试发送对象",
+    "event": "dragon.end",
+    "result": 0,
+    "timestamp": "2026-04-19T13:30:22.633829+08:00",
+    "screenshot": null,
+    "message": "一条龙和配置组任务结束",
+    "data": null
+}
+```
+字段解析：
+- `send_to`：在BetterGI中配置的‘发送对象’
+- `event`：事件类型，如`dragon.end`表示一条龙任务结束
+- `result`：事件结果，0表示成功
+- `timestamp`：事件发生时间
+- `screenshot`：事件发生时的截图，null表示无截图，一般情况下一条龙任务过程中不会提供截图数据。
+- `message`：事件描述
+- `data`：暂不清楚是什么数据
 
 ### 视频推流相关
 

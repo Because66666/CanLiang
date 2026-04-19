@@ -117,6 +117,27 @@ def setup_bgi_path(install_path):
     
     return install_path
 
+def check_port(port):
+    """
+    检查端口是否被占用
+    
+    Args:
+        port: 要检查的端口号
+        
+    Returns:
+        bool: 如果端口未被占用则返回True，否则返回False
+        
+    Raises:
+        SystemExit: 当端口被占用时退出程序
+    """
+    import socket
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(('127.0.0.1', port))
+            sock.close()
+            return True
+    except socket.error:
+        return False
 
 def main():
     """
@@ -160,6 +181,11 @@ def main():
         # 如果不禁用，则启动浏览器
         # if not args.do_not_open_website:
         #     open_browser_after_start(port)
+        
+        # 检查端口是否被占用
+        if not check_port(port):
+            logger.error(f"端口 {port} 已被占用，可能是程序重复启动，请选择其他端口。")
+            sys.exit(1)
         
         # 启动Flask应用
         logger.info(f"启动Flask应用，环境: {args.environment}，端口: {port}")

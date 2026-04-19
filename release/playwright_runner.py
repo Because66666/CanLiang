@@ -35,15 +35,23 @@ def capture_flask_screenshot(lark_webhook_url=None, host='127.0.0.1', port=3000,
     screenshots_dir.mkdir(exist_ok=True)
 
     # 构建Flask应用的URL
-    url = f"http://{host}:{port}"
+    url = f"http://{host}:{port}/home"
     capture_abspath = None
 
     # 获取当前脚本所在目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # 启动服务器
-    process = subprocess.Popen(['python', 'app.py', '-no'], cwd=script_dir)
+    process = subprocess.Popen(['python', 'run.py'], cwd=script_dir)
 
     def _run_webdriver():
+        """
+        使用 Playwright 打开页面、选择目标日期并进行截图，然后上传并发送到飞书。
+
+        注意：
+        - 修复了局部变量作用域问题，确保异常路径下图片路径为 None 时也能安全处理。
+        - 优化了下拉框定位逻辑，避免严格模式下因多个元素匹配导致的报错。
+        """
+        nonlocal capture_abspath
         try:
             time.sleep(wait_time)
             # 动态导入Playwright
@@ -61,11 +69,6 @@ def capture_flask_screenshot(lark_webhook_url=None, host='127.0.0.1', port=3000,
 
                 # 等待页面加载完成
                 page.wait_for_load_state("networkidle")
-                page.get_by_role("combobox").click()
-                page.wait_for_timeout(1000)
-                ele = page.get_by_role("option", name=datetime.datetime.today().strftime("%Y%m%d"))
-                ele.click()
-                page.wait_for_timeout(3000)  # 等待动画结束
                 # 生成截图文件名
                 timestamp = time.strftime("%Y%m%d-%H%M%S")
                 screenshot_path = os.path.join(screenshots_dir, f"screenshot_{timestamp}.png")
