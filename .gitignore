@@ -34,3 +34,6 @@ __pycache__/
 
 # 以前的旧版本
 old_versions/
+
+# webhook的响应测试
+response_test/
