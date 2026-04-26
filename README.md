@@ -37,6 +37,7 @@ Demo网页：https://can-liang.vercel.app/home
 
 ### 致谢提交PR的合作开发者
 - [xiaocdeh](https://github.com/xiaocdeh)，提交了 https://github.com/Because66666/CanLiang/pull/2
+- [crazysmile-PhD](https://github.com/crazysmile-PhD)，提交了 https://github.com/Because66666/CanLiang/pull/14
 
 ### 致谢提交Issues的关注者
 - [crazysmile-PhD](https://github.com/crazysmile-PhD)，提交了 https://github.com/Because66666/CanLiang/issues/4
