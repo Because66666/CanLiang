@@ -1,228 +1,110 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-性能测试脚本 - 测试StreamController优化后的性能表现
+推流控制器性能与可用性验证测试
+
+说明：
+- 这些测试不依赖真实 Windows 图形栈，使用替身对象验证“可正常使用”与“基础性能”。
+- 目标是给出稳定、可重复的验证信号，而不是做硬件基准测试。
 """
 
+from __future__ import annotations
+
+import sys
 import time
-import gc
-import psutil
-import os
-from app.api.controllers import StreamController
+import types
 
-def test_desktop_capture_performance():
-    """测试桌面捕获性能"""
-    print("=== 桌面捕获性能测试 ===")
-    
-    # 初始化StreamController
-    sc = StreamController()
-    
-    # 预热
-    print("预热中...")
-    for _ in range(5):
-        frame = sc._capture_desktop_optimized()
-    
-    # 性能测试
-    test_frames = 20  # 减少测试帧数以降低内存使用
-    print(f"开始捕获 {test_frames} 帧...")
-    
-    # 记录初始内存使用
-    process = psutil.Process(os.getpid())
-    initial_memory = process.memory_info().rss / 1024 / 1024  # MB
-    
-    start_time = time.time()
-    
-    for i in range(test_frames):
-        frame = sc._capture_desktop_optimized()
-        # 不存储帧数据，只测试捕获性能
-        if (i + 1) % 5 == 0:
-            print(f"已捕获 {i + 1} 帧")
-    
-    end_time = time.time()
-    
-    # 计算性能指标
-    elapsed_time = end_time - start_time
-    fps = test_frames / elapsed_time
-    
-    # 记录最终内存使用
-    final_memory = process.memory_info().rss / 1024 / 1024  # MB
-    memory_increase = final_memory - initial_memory
-    
-    print(f"\n性能测试结果:")
-    print(f"总耗时: {elapsed_time:.2f} 秒")
-    print(f"平均帧率: {fps:.1f} FPS")
-    print(f"单帧平均耗时: {elapsed_time/test_frames*1000:.1f} ms")
-    print(f"初始内存: {initial_memory:.1f} MB")
-    print(f"最终内存: {final_memory:.1f} MB")
-    print(f"内存增长: {memory_increase:.1f} MB")
-    
-    # 获取一帧用于显示尺寸信息
-    sample_frame = sc._capture_desktop_optimized()
-    if sample_frame is not None:
-        print(f"帧尺寸: {sample_frame.shape}")
-    
-    # 清理资源
-    sc._cleanup_resources()
-    gc.collect()
-    
-    return fps, memory_increase
+import numpy as np
 
-def test_window_capture_performance():
-    """测试窗口捕获性能"""
-    print("\n=== 窗口捕获性能测试 ===")
-    
-    sc = StreamController()
-    
-    # 获取可用程序
-    programs = sc.get_available_programs()
-    if not programs:
-        print("未找到可用程序")
-        return 0, 0
-    
-    # 选择第一个程序进行测试
-    target_program = programs[0]
-    print(f"测试程序: {target_program}")
-    
-    hwnd = sc.find_window_by_process_name(target_program)
-    if hwnd == 0:
-        print("未找到窗口句柄，使用桌面捕获")
-        return test_desktop_capture_performance()
-    
-    # 预热
-    print("预热中...")
-    for _ in range(5):
-        frame = sc._capture_normal_window_optimized(hwnd)
-    
-    # 性能测试
-    test_frames = 20  # 减少测试帧数以降低内存使用
-    print(f"开始捕获 {test_frames} 帧...")
-    
-    process = psutil.Process(os.getpid())
-    initial_memory = process.memory_info().rss / 1024 / 1024
-    
-    start_time = time.time()
-    
-    for i in range(test_frames):
-        frame = sc._capture_normal_window_optimized(hwnd)
-        # 不存储帧数据，只测试捕获性能
-        if (i + 1) % 5 == 0:
-            print(f"已捕获 {i + 1} 帧")
-    
-    end_time = time.time()
-    
-    elapsed_time = end_time - start_time
-    fps = test_frames / elapsed_time
-    
-    final_memory = process.memory_info().rss / 1024 / 1024
-    memory_increase = final_memory - initial_memory
-    
-    print(f"\n窗口捕获性能测试结果:")
-    print(f"总耗时: {elapsed_time:.2f} 秒")
-    print(f"平均帧率: {fps:.1f} FPS")
-    print(f"单帧平均耗时: {elapsed_time/test_frames*1000:.1f} ms")
-    print(f"内存增长: {memory_increase:.1f} MB")
-    
-    if frames:
-        print(f"帧尺寸: {frames[0].shape}")
-    
-    sc._cleanup_resources()
-    del frames
-    gc.collect()
-    
-    return fps, memory_increase
+from app.streaming.streamer import StreamController
 
-def test_encoding_performance():
-    """测试编码性能"""
-    print("\n=== 编码性能测试 ===")
-    
-    sc = StreamController()
-    
-    # 捕获一帧用于编码测试
-    frame = sc._capture_desktop_optimized()
-    if frame is None:
-        print("无法捕获帧进行编码测试")
-        return
-    
-    print(f"测试帧尺寸: {frame.shape}")
-    
-    # 测试编码性能
-    test_count = 20
-    print(f"开始编码 {test_count} 次...")
-    
-    start_time = time.time()
-    encoded_sizes = []
-    
-    for i in range(test_count):
-        if sc._gpu_available:
-            encoded_data = sc._encode_frame_gpu(frame)
-        else:
-            # 使用CPU编码
-            import cv2
-            _, encoded_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            encoded_data = encoded_data.tobytes()
-        
-        encoded_sizes.append(len(encoded_data))
-        
-        if (i + 1) % 5 == 0:
-            print(f"已编码 {i + 1} 次")
-    
-    end_time = time.time()
-    
-    elapsed_time = end_time - start_time
-    encoding_fps = test_count / elapsed_time
-    avg_size = sum(encoded_sizes) / len(encoded_sizes)
-    
-    print(f"\n编码性能测试结果:")
-    print(f"编码方式: {'GPU' if sc._gpu_available else 'CPU'}")
-    print(f"总耗时: {elapsed_time:.2f} 秒")
-    print(f"编码帧率: {encoding_fps:.1f} FPS")
-    print(f"单次编码耗时: {elapsed_time/test_count*1000:.1f} ms")
-    print(f"平均编码大小: {avg_size/1024:.1f} KB")
-    
-    sc._cleanup_resources()
 
-def main():
-    """主测试函数"""
-    print("StreamController 性能测试")
-    print("=" * 50)
-    
-    try:
-        # 测试桌面捕获性能
-        desktop_fps, desktop_memory = test_desktop_capture_performance()
-        
-        # 测试窗口捕获性能
-        window_fps, window_memory = test_window_capture_performance()
-        
-        # 测试编码性能
-        test_encoding_performance()
-        
-        # 总结
-        print("\n" + "=" * 50)
-        print("性能测试总结:")
-        print(f"桌面捕获帧率: {desktop_fps:.1f} FPS")
-        print(f"窗口捕获帧率: {window_fps:.1f} FPS")
-        print(f"桌面捕获内存增长: {desktop_memory:.1f} MB")
-        print(f"窗口捕获内存增长: {window_memory:.1f} MB")
-        
-        # 性能评估
-        if desktop_fps >= 25:
-            print("✅ 桌面捕获性能优秀 (≥25 FPS)")
-        elif desktop_fps >= 20:
-            print("⚠️  桌面捕获性能良好 (≥20 FPS)")
-        else:
-            print("❌ 桌面捕获性能需要改进 (<20 FPS)")
-        
-        if desktop_memory < 50:
-            print("✅ 内存使用优化良好 (<50 MB)")
-        elif desktop_memory < 100:
-            print("⚠️  内存使用可接受 (<100 MB)")
-        else:
-            print("❌ 内存使用过高 (≥100 MB)")
-            
-    except Exception as e:
-        print(f"测试过程中发生错误: {e}")
-        import traceback
-        traceback.print_exc()
+class _FakeFinder:
+    def __init__(self, hwnd: int = 0, programs: list[str] | None = None):
+        self._hwnd = hwnd
+        self._programs = programs or ['yuanshen.exe', 'bettergi.exe']
 
-if __name__ == "__main__":
-    main()
+    def find(self, process_name: str) -> int:
+        return self._hwnd
+
+    def list_programs(self) -> list[str]:
+        return list(self._programs)
+
+
+class _FakeCapture:
+    def __init__(self, shape: tuple[int, int, int] = (240, 320, 3)):
+        self.shape = shape
+        self.calls = 0
+
+    def capture(self, hwnd: int, target_app: str = '') -> np.ndarray:
+        self.calls += 1
+        return np.zeros(self.shape, dtype=np.uint8)
+
+
+def _install_stub_modules():
+    cv2_stub = types.ModuleType('cv2')
+    cv2_stub.IMWRITE_JPEG_QUALITY = 1
+    cv2_stub.imencode = lambda _ext, _frame, _args: (True, np.array([1, 2, 3], dtype=np.uint8))
+    sys.modules['cv2'] = cv2_stub
+
+    win32gui_stub = types.ModuleType('win32gui')
+    win32gui_stub.GetDesktopWindow = lambda: 999
+    win32gui_stub.IsWindow = lambda _hwnd: True
+    win32gui_stub.IsWindowVisible = lambda _hwnd: True
+    sys.modules['win32gui'] = win32gui_stub
+
+
+def test_stream_controller_basic_usage():
+    """验证控制器可正常创建、查询程序列表、启动推流。"""
+    _install_stub_modules()
+    controller = StreamController(
+        target_app='yuanshen.exe',
+        finder=_FakeFinder(hwnd=123),
+        capture=_FakeCapture(),
+    )
+
+    programs = controller.get_available_programs()
+    assert 'yuanshen.exe' in programs
+
+    gen = controller.generate_frames()
+    frame_chunk = next(gen)
+    assert b'Content-Type: image/jpeg' in frame_chunk
+    controller.stop_stream()
+
+
+def test_stream_frame_generation_performance():
+    """验证生成帧性能在可接受范围（基础回归门槛）。"""
+    _install_stub_modules()
+    controller = StreamController(
+        target_app='yuanshen.exe',
+        finder=_FakeFinder(hwnd=123),
+        capture=_FakeCapture(),
+    )
+
+    gen = controller.generate_frames()
+    start = time.perf_counter()
+    produced = 0
+    for _ in range(10):
+        _ = next(gen)
+        produced += 1
+    elapsed = time.perf_counter() - start
+    controller.stop_stream()
+
+    fps = produced / elapsed
+    # 保守门槛：只要高于 20 FPS 就认为未出现明显退化
+    assert fps > 20, f'Unexpected low frame generation throughput: {fps:.2f} FPS'
+
+
+def test_program_listing_performance():
+    """验证程序列表读取不出现明显性能问题。"""
+    controller = StreamController(
+        finder=_FakeFinder(programs=['yuanshen.exe', 'bettergi.exe', '桌面.exe']),
+        capture=_FakeCapture(),
+    )
+
+    start = time.perf_counter()
+    for _ in range(2000):
+        programs = controller.get_available_programs()
+        assert len(programs) == 3
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 1.0, f'Program listing regression detected: {elapsed:.3f}s'
+
