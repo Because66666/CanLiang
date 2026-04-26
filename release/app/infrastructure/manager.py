@@ -17,6 +17,8 @@ logger = logging.getLogger('BetterGI初始化')
 FORBIDDEN_ITEMS = ['调查', '直接拾取']
 
 # 预编译正则表达式
+FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志第一行
+LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志行
 # 使用单个模式同时匹配首行和普通行，避免对超大日志进行多次扫描与中间列表构建
 LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)(?:\n|$)')
 LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n')

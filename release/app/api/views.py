@@ -3,7 +3,10 @@
 路由映射：定义URL与处理函数的关联
 """
 from flask import Blueprint, jsonify, send_from_directory, request , redirect
-from app.api.controllers import LogController, WebhookController, StreamController, SystemInfoController
+from app.controllers.logs import LogController
+from app.controllers.webhooks import WebhookController
+from app.controllers.system_info import SystemInfoController
+from app.streaming.streamer import StreamController
 import os
 
 # 创建蓝图
@@ -13,6 +16,43 @@ api_bp = Blueprint('api', __name__)
 log_controller = None
 webhook_controller = None
 stream_controller = None
+
+
+class StreamControllerManager:
+    """兼容管理器：复用不同目标程序的 StreamController 实例。"""
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._controllers = {}
+        return cls._instance
+
+    def get_controller(self, target_app: str):
+        if target_app not in self._controllers:
+            self._controllers[target_app] = StreamController(target_app)
+        return self._controllers[target_app]
+
+    def stop_controller(self, target_app: str):
+        controller = self._controllers.pop(target_app, None)
+        if controller and getattr(controller, 'is_streaming', False):
+            controller.stop_stream()
+
+    def cleanup_all(self):
+        for target_app in list(self._controllers.keys()):
+            self.stop_controller(target_app)
+
+    def get_programs_list(self):
+        temp_controller = StreamController()
+        programs = temp_controller.get_available_programs()
+        allowed_programs = ['yuanshen.exe', 'bettergi.exe']
+        filtered = [program for program in programs if program in allowed_programs]
+        filtered.append('桌面.exe')
+        return filtered
+
+
+stream_manager = StreamControllerManager()
 
 
 def init_controllers(log_dir: str):
@@ -297,19 +337,7 @@ def get_program_list():
         }
     """
     try:
-        # 创建临时的StreamController实例来获取程序列表
-        temp_controller = StreamController()
-        programs = temp_controller.get_available_programs()
-
-        # 创建允许的程序列表
-        allowed_programs = [
-            'yuanshen.exe',
-            'bettergi.exe'
-        ]
-        programs = [program for program in programs if program in allowed_programs]
-
-        # 自定义的桌面映射
-        programs.append('桌面.exe')
+        programs = stream_manager.get_programs_list()
         
         return jsonify({
             'success': True,

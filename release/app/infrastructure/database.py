@@ -433,4 +433,62 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"获取webhook数据时发生错误: {e}")
             return []
+
+
+class LogDatabase:
+    """
+    兼容包装器：对齐历史 `LogDatabase` 接口，内部复用 DatabaseManager。
+    """
+
+    def __init__(self, db_path: str):
+        self._manager = DatabaseManager(db_path)
+
+    def store_log_data(self, date_str: str, duration: int, items: List) -> bool:
+        normalized_items = [
+            {
+                'name': item.name,
+                'timestamp': item.timestamp,
+                'config_group': getattr(item, 'config_group', None),
+            }
+            for item in items
+        ]
+        return self._manager.insert_log_file_data(date_str, duration, normalized_items)
+
+    def is_date_stored(self, date_str: str) -> bool:
+        return date_str in set(self._manager.get_stored_dates())
+
+    def get_stored_dates(self) -> List[str]:
+        return self._manager.get_stored_dates()
+
+    def get_duration_data(self, exclude_today: bool = True) -> Dict[str, List]:
+        duration_map = self._manager.get_duration_data(exclude_today=exclude_today)
+        sorted_dates = sorted(duration_map.keys(), reverse=True)
+        return {
+            '日期': sorted_dates,
+            '持续时间': [duration_map[d] for d in sorted_dates],
+        }
+
+    def get_item_data(self, exclude_today: bool = True) -> Dict[str, List]:
+        grouped = self._manager.get_item_data(exclude_today=exclude_today)
+        result = {'物品名称': [], '时间': [], '日期': [], '归属配置组': []}
+        for date_str in sorted(grouped.keys(), reverse=True):
+            bucket = grouped[date_str]
+            names = bucket.get('物品名称', [])
+            times = bucket.get('时间', [])
+            groups = bucket.get('归属配置组', [])
+            for idx, name in enumerate(names):
+                result['物品名称'].append(name)
+                result['时间'].append(times[idx] if idx < len(times) else '')
+                result['日期'].append(date_str)
+                result['归属配置组'].append(groups[idx] if idx < len(groups) else '')
+        return result
+
+    def get_database_stats(self) -> Dict[str, int]:
+        with self._manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM log_files')
+            log_files_count = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM items')
+            items_count = cursor.fetchone()[0]
+        return {'log_files_count': log_files_count, 'items_count': items_count}
     
