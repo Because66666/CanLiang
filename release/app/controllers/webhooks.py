@@ -1,8 +1,7 @@
 import logging
-import os
 from typing import Dict, Any
 
-from app.infrastructure.database import DatabaseManager
+from app.infrastructure.adapters import InquiryStoreAdapter, LegacyInquiryStoreAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +15,8 @@ def validate_webhook_payload(payload: Dict[str, Any]) -> tuple[bool, str]:
 class WebhookController:
     """Webhook控制器：负责请求校验与数据库持久化协调。"""
 
-    def __init__(self, log_dir: str, db_manager: DatabaseManager | None = None):
-        db_path = os.path.join(log_dir, 'CanLiangData.db')
-        self.db_manager = db_manager or DatabaseManager(db_path)
+    def __init__(self, log_dir: str, adapter: InquiryStoreAdapter | None = None):
+        self.adapter = adapter or LegacyInquiryStoreAdapter(log_dir)
 
     def save_data(self, dict_list: Dict) -> Dict[str, Any]:
         try:
@@ -26,7 +24,7 @@ class WebhookController:
             if not valid:
                 return {'success': False, 'message': message}
 
-            success = self.db_manager.save_webhook_data(dict_list)
+            success = self.adapter.save(dict_list)
             return {
                 'success': bool(success),
                 'message': '数据保存成功' if success else '数据保存失败'
@@ -37,7 +35,7 @@ class WebhookController:
 
     def get_webhook_data(self, limit: int = 100) -> Dict[str, Any]:
         try:
-            data_list = self.db_manager.get_webhook_data(limit)
+            data_list = self.adapter.get_recent(limit)
             return {'success': True, 'data': data_list, 'count': len(data_list)}
         except Exception as e:
             logger.error(f"获取webhook数据时发生错误: {e}")
