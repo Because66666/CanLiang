@@ -18,6 +18,7 @@ FORBIDDEN_ITEMS = ['调查', '直接拾取']
 
 # 预编译正则表达式
 # 使用单个模式同时匹配首行和普通行，避免对超大日志进行多次扫描与中间列表构建
+LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)(?:\n|$)')
 LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n')
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 
@@ -67,8 +68,8 @@ class LogDataManager:
         item_count = {}
         items = []
 
-        # 使用时间段列表管理所有活动时间段
-        time_segments = []  # 存储所有时间段 [(start, end), ...]
+        # 使用累计值管理活动时长，避免为超大日志构建时间段列表
+        total_duration = 0
         current_start = None
         last_time = None
         current_task = None  # 当前运行的配置组
@@ -126,21 +127,18 @@ class LogDataManager:
             elif current_time - last_time > 300:
                 # 间隔过大（超过5分钟），结束当前段
                 if current_start is not None:
-                    time_segments.append((current_start, last_time))
+                    total_duration += int(last_time - current_start)
                 current_start = current_time
             
             last_time = current_time
 
         # 处理最后一段
         if current_start is not None and last_time is not None:
-            time_segments.append((current_start, last_time))
-
-        # 计算总持续时间
-        duration = sum(int(end - start) for start, end in time_segments)
+            total_duration += int(last_time - current_start)
 
         return LogAnalysisResult(
             item_count=item_count,
-            duration=duration,
+            duration=total_duration,
             items=items
         )
 
