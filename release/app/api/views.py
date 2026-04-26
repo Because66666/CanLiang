@@ -99,6 +99,8 @@ def get_log_list_api():
         return jsonify({'error': '控制器未初始化'}), 500
     
     result = log_controller.get_log_list()
+    if not isinstance(result, dict):
+        return jsonify({'error': '控制器返回数据格式错误'}), 500
     return jsonify(result)
 
 
@@ -117,6 +119,8 @@ def analyse_log():
         return jsonify({'error': '控制器未初始化'}), 500
     
     result = log_controller.get_log_data()
+    if not isinstance(result, dict):
+        return jsonify({'error': '控制器返回数据格式错误'}), 500
     return jsonify(result)
 
 
