@@ -15,7 +15,6 @@ api_bp = Blueprint('api', __name__)
 # 全局控制器实例（将在应用启动时初始化）
 log_controller = None
 webhook_controller = None
-stream_controller = None
 
 
 class StreamControllerManager:
@@ -51,8 +50,34 @@ class StreamControllerManager:
         filtered.append('桌面.exe')
         return filtered
 
+    def get_single_target_app(self):
+        """
+        当且仅当当前只存在一个控制器时，返回对应 target_app。
+        否则返回 None。
+        """
+        if len(self._controllers) != 1:
+            return None
+        return next(iter(self._controllers.keys()))
+
 
 stream_manager = StreamControllerManager()
+
+
+def _resolve_stream_target_app(explicit_target_app: str = None):
+    """
+    解析并返回可用的目标程序：
+    1. 显式指定时直接使用；
+    2. 未指定且仅有一个已创建控制器时自动使用；
+    3. 其他情况返回None。
+    """
+    if explicit_target_app:
+        return explicit_target_app
+
+    single_target = stream_manager.get_single_target_app()
+    if single_target:
+        return single_target
+
+    return None
 
 
 def init_controllers(log_dir: str):
@@ -62,10 +87,9 @@ def init_controllers(log_dir: str):
     Args:
         log_dir: 日志目录路径
     """
-    global log_controller, webhook_controller, stream_controller
+    global log_controller, webhook_controller
     log_controller = LogController(log_dir)
     webhook_controller = WebhookController(log_dir)
-    # stream_controller将在首次请求时动态创建
 
 
 
@@ -212,8 +236,6 @@ def video_stream():
     Returns:
         Response: MJPEG视频流响应或JSON错误响应
     """
-    global stream_controller
-    
     # 获取查询参数中的app参数
     target_app = request.args.get('app', '').strip()
     
@@ -235,15 +257,7 @@ def video_stream():
         }), 400
     
     try:
-        # 检查是否需要重新初始化stream_controller
-        if not stream_controller or stream_controller.target_app != target_app:
-            # 如果当前有推流在进行，先停止
-            if stream_controller and stream_controller.is_streaming:
-                stream_controller.stop_stream()
-            
-            # 重新初始化推流控制器
-            stream_controller = StreamController(target_app)
-        
+        stream_controller = stream_manager.get_controller(target_app)
         return stream_controller.start_stream()
         
     except Exception as e:
@@ -260,10 +274,15 @@ def get_stream_info():
     Returns:
         Response: 包含推流状态信息的JSON响应
     """
-    if not stream_controller:
-        return jsonify({'error': '推流控制器未初始化'}), 500
+    target_app = _resolve_stream_target_app(request.args.get('app', '').strip())
+    if not target_app:
+        return jsonify({
+            'error': '推流控制器未初始化',
+            'message': '请先调用 /api/stream?app=xxx 初始化，或在查询参数中提供 app'
+        }), 400
     
     try:
+        stream_controller = stream_manager.get_controller(target_app)
         result = stream_controller.get_stream_info()
         return jsonify(result)
     except Exception as e:
@@ -280,14 +299,19 @@ def stop_stream():
     Returns:
         Response: 操作结果的JSON响应
     """
-    if not stream_controller:
-        return jsonify({'error': '推流控制器未初始化'}), 500
+    body = request.get_json(silent=True) or {}
+    target_app = _resolve_stream_target_app((body.get('app') or '').strip())
+    if not target_app:
+        return jsonify({
+            'error': '推流控制器未初始化',
+            'message': '请先调用 /api/stream?app=xxx 初始化，或在请求体中提供 app'
+        }), 400
     
     try:
-        stream_controller.stop_stream()
+        stream_manager.stop_controller(target_app)
         return jsonify({
             'success': True,
-            'message': '推流已停止'
+            'message': f'{target_app} 推流已停止'
         })
     except Exception as e:
         return jsonify({

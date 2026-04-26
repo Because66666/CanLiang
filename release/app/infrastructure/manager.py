@@ -17,8 +17,10 @@ logger = logging.getLogger('BetterGI初始化')
 FORBIDDEN_ITEMS = ['调查', '直接拾取']
 
 # 预编译正则表达式
-FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志第一行
-LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志行
+FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志第一行
+LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志行
+NEW_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)$')  # 匹配新版单行日志
+LEGACY_HEADER_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] ([^\n]+)$')  # 匹配旧版日志头
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 
 
@@ -52,6 +54,45 @@ class LogDataManager:
         # 今天的日期字符串，用于排除今天的数据存储
         self.today_str = date.today().strftime('%Y%m%d')
     
+    def _extract_log_entries(self, log_content: str) -> List[Tuple[str, str, str, str]]:
+        """
+        兼容解析日志行：
+        - 新格式: [时间] [级别] [类名] 消息
+        - 旧格式: [时间] [级别] [类名]\\n消息
+        """
+        parsed_matches: List[Tuple[str, str, str, str]] = []
+        lines = log_content.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip('\r')
+            new_line_match = NEW_LINE_PATTERN.match(line)
+            if new_line_match:
+                parsed_matches.append(new_line_match.groups())
+                i += 1
+                continue
+
+            header_match = LEGACY_HEADER_PATTERN.match(line)
+            if not header_match:
+                i += 1
+                continue
+
+            details = ''
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                if not next_line.startswith('['):
+                    details = next_line
+                    i += 1
+
+            parsed_matches.append((
+                header_match.group(1),
+                header_match.group(2),
+                header_match.group(3),
+                details
+            ))
+            i += 1
+
+        return parsed_matches
+
     def parse_log(self, log_content: str, date_str: str) -> LogAnalysisResult:
         """
         解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -64,10 +105,7 @@ class LogDataManager:
         Returns:
             LogAnalysisResult: 包含解析结果的分析结果对象
         """
-        matches = LOG_PATTERN.findall(log_content)
-        first_line_match = FIRST_LINE_PATTERN.match(log_content)
-        if first_line_match:
-            matches = [first_line_match.groups()] + matches
+        matches = self._extract_log_entries(log_content)
 
         item_count = {}
         items = []
