@@ -107,6 +107,30 @@ class TestLogDataManager(unittest.TestCase):
         self.assertEqual(len(result.items), 1)
         self.assertEqual(result.items[0].name, "测试物品")
         self.assertEqual(result.items[0].config_group, "测试组")
+
+    def test_parse_log_legacy_multiline_format(self):
+        """
+        测试旧版多行日志格式兼容解析。
+        旧格式示例：
+        [12:00:00.000] [INFO] [TestClass]
+        配置组 "测试组" 加载完成，共1个脚本，开始执行
+        """
+        legacy_log_content = '''[12:00:00.000] [INFO] [TestClass]
+配置组 "测试组" 加载完成，共1个脚本，开始执行
+[12:01:00.000] [INFO] [TestClass]
+交互或拾取："旧格式物品"
+[12:02:00.000] [INFO] [TestClass]
+配置组 "测试组" 执行结束
+'''
+
+        result = self.log_manager.parse_log(legacy_log_content, "20250101")
+
+        self.assertIsNotNone(result)
+        self.assertIn("旧格式物品", result.item_count)
+        self.assertEqual(result.item_count["旧格式物品"], 1)
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(result.items[0].name, "旧格式物品")
+        self.assertEqual(result.items[0].config_group, "测试组")
     
     def test_read_log_file_not_found(self):
         """
