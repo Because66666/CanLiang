@@ -36,7 +36,7 @@ class LogDataManager:
             log_dir: 日志目录路径
         """
         self.log_dir = log_dir
-        self.item_cached_list = []  # 用于替代原有的筛选功能，避免物品的重复记录
+        self.item_cached_set = set()  # 用于替代原有的筛选功能，避免物品的重复记录
         self.item_datadict = {
             '物品名称': [], '时间': [], '日期': [], '归属配置组': []
         }
@@ -111,7 +111,7 @@ class LogDataManager:
 
                 # 检查是否存在匹配的行
                 cache_key = f'{item_name}{timestamp}{date_str}{current_task}'
-                if cache_key not in self.item_cached_list:
+                if cache_key not in self.item_cached_set:
                     item_info = ItemInfo(
                         name=item_name,
                         timestamp=timestamp,
@@ -119,7 +119,7 @@ class LogDataManager:
                         config_group=str(current_task) if current_task else None
                     )
                     items.append(item_info)
-                    self.item_cached_list.append(cache_key)
+                    self.item_cached_set.add(cache_key)
 
             # 处理时间段
             if last_time is None:
@@ -229,7 +229,7 @@ class LogDataManager:
             tuple: (duration, items) 今天的持续时间和物品列表，如果没有数据则返回(0, [])
         """
         # 清空缓存，因为需要重新读取今天的数据
-        self.item_cached_list = []
+        self.item_cached_set.clear()
         
         today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
         
@@ -345,4 +345,3 @@ class LogDataManager:
         # 无视之前数据，强制刷新今天数据
         self.get_log_list()
         return self.item_datadict
-
