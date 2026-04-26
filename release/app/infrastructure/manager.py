@@ -19,9 +19,6 @@ FORBIDDEN_ITEMS = ['调查', '直接拾取']
 # 预编译正则表达式
 FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志第一行
 LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配日志行
-# 使用单个模式同时匹配首行和普通行，避免对超大日志进行多次扫描与中间列表构建
-LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)(?:\n|$)')
-LOG_ENTRY_PATTERN = re.compile(r'(?:^|\n)\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n')
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 
 
@@ -67,20 +64,24 @@ class LogDataManager:
         Returns:
             LogAnalysisResult: 包含解析结果的分析结果对象
         """
+        matches = LOG_PATTERN.findall(log_content)
+        first_line_match = FIRST_LINE_PATTERN.match(log_content)
+        if first_line_match:
+            matches = [first_line_match.groups()] + matches
+
         item_count = {}
         items = []
-
         # 使用累计值管理活动时长，避免为超大日志构建时间段列表
         total_duration = 0
         current_start = None
         last_time = None
         current_task = None  # 当前运行的配置组
         
-        for match in LOG_ENTRY_PATTERN.finditer(log_content):
-            timestamp = match.group(1)  # 时间戳
+        for match in matches:
+            timestamp = match[0]  # 时间戳
             # level = match[1]  # 日志级别
             # log_type = match[2]  # 类名
-            details = match.group(4).strip()  # 日志内容文本
+            details = match[3].strip()  # 日志内容文本
 
             # 过滤禁用的关键词
             if any(keyword in details for keyword in FORBIDDEN_ITEMS):
@@ -99,7 +100,7 @@ class LogDataManager:
                 current_time = parse_timestamp_to_seconds(timestamp)
             except Exception as e:
                 logger.error(f"解析时间戳{timestamp}时候发生错误:{e}")
-                logger.error(f'涉及的完整匹配字符串：{match.group(0)}')
+                logger.error(f'涉及的完整匹配字符串：{match}')
                 continue
                 
             # 提取拾取内容
