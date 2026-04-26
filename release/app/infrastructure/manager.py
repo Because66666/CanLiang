@@ -19,6 +19,7 @@ FORBIDDEN_ITEMS = ['调查', '直接拾取']
 # 预编译正则表达式
 FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志第一行
 LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志行
+NEW_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)$')  # 匹配新版单行日志
 LEGACY_HEADER_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] ([^\n]+)$')  # 匹配旧版日志头
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 
@@ -59,17 +60,17 @@ class LogDataManager:
         - 新格式: [时间] [级别] [类名] 消息
         - 旧格式: [时间] [级别] [类名]\\n消息
         """
-        matches = LOG_PATTERN.findall(log_content)
-        first_line_match = FIRST_LINE_PATTERN.match(log_content)
-        if first_line_match:
-            matches = [first_line_match.groups()] + matches
-            return matches
-
-        legacy_matches: List[Tuple[str, str, str, str]] = []
+        parsed_matches: List[Tuple[str, str, str, str]] = []
         lines = log_content.splitlines()
         i = 0
         while i < len(lines):
             line = lines[i].strip('\r')
+            new_line_match = NEW_LINE_PATTERN.match(line)
+            if new_line_match:
+                parsed_matches.append(new_line_match.groups())
+                i += 1
+                continue
+
             header_match = LEGACY_HEADER_PATTERN.match(line)
             if not header_match:
                 i += 1
@@ -82,7 +83,7 @@ class LogDataManager:
                     details = next_line
                     i += 1
 
-            legacy_matches.append((
+            parsed_matches.append((
                 header_match.group(1),
                 header_match.group(2),
                 header_match.group(3),
@@ -90,7 +91,7 @@ class LogDataManager:
             ))
             i += 1
 
-        return legacy_matches
+        return parsed_matches
 
     def parse_log(self, log_content: str, date_str: str) -> LogAnalysisResult:
         """

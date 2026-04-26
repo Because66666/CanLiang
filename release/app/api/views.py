@@ -15,7 +15,6 @@ api_bp = Blueprint('api', __name__)
 # 全局控制器实例（将在应用启动时初始化）
 log_controller = None
 webhook_controller = None
-stream_controller = None
 
 
 class StreamControllerManager:
@@ -51,6 +50,15 @@ class StreamControllerManager:
         filtered.append('桌面.exe')
         return filtered
 
+    def get_single_target_app(self):
+        """
+        当且仅当当前只存在一个控制器时，返回对应 target_app。
+        否则返回 None。
+        """
+        if len(self._controllers) != 1:
+            return None
+        return next(iter(self._controllers.keys()))
+
 
 stream_manager = StreamControllerManager()
 
@@ -65,8 +73,9 @@ def _resolve_stream_target_app(explicit_target_app: str = None):
     if explicit_target_app:
         return explicit_target_app
 
-    if len(stream_manager._controllers) == 1:
-        return next(iter(stream_manager._controllers.keys()))
+    single_target = stream_manager.get_single_target_app()
+    if single_target:
+        return single_target
 
     return None
 
@@ -78,10 +87,9 @@ def init_controllers(log_dir: str):
     Args:
         log_dir: 日志目录路径
     """
-    global log_controller, webhook_controller, stream_controller
+    global log_controller, webhook_controller
     log_controller = LogController(log_dir)
     webhook_controller = WebhookController(log_dir)
-    # stream_controller将在首次请求时动态创建
 
 
 
