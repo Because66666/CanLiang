@@ -107,6 +107,55 @@ class TestLogDataManager(unittest.TestCase):
         self.assertEqual(len(result.items), 1)
         self.assertEqual(result.items[0].name, "测试物品")
         self.assertEqual(result.items[0].config_group, "测试组")
+
+    def test_parse_log_legacy_multiline_format(self):
+        """
+        测试旧版多行日志格式兼容解析。
+        旧格式示例：
+        [12:00:00.000] [INFO] [TestClass]
+        配置组 "测试组" 加载完成，共1个脚本，开始执行
+        """
+        legacy_log_content = '''[12:00:00.000] [INFO] [TestClass]
+配置组 "测试组" 加载完成，共1个脚本，开始执行
+[12:01:00.000] [INFO] [TestClass]
+交互或拾取："旧格式物品"
+[12:02:00.000] [INFO] [TestClass]
+配置组 "测试组" 执行结束
+'''
+
+        result = self.log_manager.parse_log(legacy_log_content, "20250101")
+
+        self.assertIsNotNone(result)
+        self.assertIn("旧格式物品", result.item_count)
+        self.assertEqual(result.item_count["旧格式物品"], 1)
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(result.items[0].name, "旧格式物品")
+        self.assertEqual(result.items[0].config_group, "测试组")
+
+    def test_parse_log_mixed_new_and_legacy_format(self):
+        """
+        测试新旧日志格式混用时的兼容解析。
+        预期同时解析：
+        - 新格式（单行）
+        - 旧格式（表头 + 下一行详情）
+        """
+        mixed_log_content = '''[12:00:00.000] [INFO] [TestClass] 配置组 "混合组" 加载完成，共2个脚本，开始执行
+[12:01:00.000] [INFO] [TestClass]
+交互或拾取："旧格式物品A"
+[12:02:00.000] [INFO] [TestClass] 交互或拾取："新格式物品B"
+[12:03:00.000] [INFO] [TestClass] 配置组 "混合组" 执行结束
+'''
+
+        result = self.log_manager.parse_log(mixed_log_content, "20250101")
+
+        self.assertIsNotNone(result)
+        self.assertIn("旧格式物品A", result.item_count)
+        self.assertIn("新格式物品B", result.item_count)
+        self.assertEqual(result.item_count["旧格式物品A"], 1)
+        self.assertEqual(result.item_count["新格式物品B"], 1)
+        self.assertEqual(len(result.items), 2)
+        self.assertEqual(result.items[0].config_group, "混合组")
+        self.assertEqual(result.items[1].config_group, "混合组")
     
     def test_read_log_file_not_found(self):
         """

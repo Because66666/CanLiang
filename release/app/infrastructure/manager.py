@@ -17,8 +17,10 @@ logger = logging.getLogger('BetterGI初始化')
 FORBIDDEN_ITEMS = ['调查', '直接拾取']
 
 # 预编译正则表达式
-FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n')  # 匹配日志第一行
-LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] ([^\n]+)\n?([^\n[]*)\n')  # 匹配日志行
+FIRST_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志第一行
+LOG_PATTERN = re.compile(r'\n\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)(?:\n|$)')  # 匹配新版日志行
+NEW_LINE_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] \[([^]]+)\] ([^\n]*)$')  # 匹配新版单行日志
+LEGACY_HEADER_PATTERN = re.compile(r'^\[([^]]+)\] \[([^]]+)\] ([^\n]+)$')  # 匹配旧版日志头
 TASK_BEGIN_PATTERN = re.compile(r'^配置组 "([^"]*)" 加载完成，共(\d+)个脚本，开始执行$')  # 匹配配置组开始
 
 
@@ -36,7 +38,7 @@ class LogDataManager:
             log_dir: 日志目录路径
         """
         self.log_dir = log_dir
-        self.item_cached_list = []  # 用于替代原有的筛选功能，避免物品的重复记录
+        self.item_cached_set = set()  # 用于替代原有的筛选功能，避免物品的重复记录
         self.item_datadict = {
             '物品名称': [], '时间': [], '日期': [], '归属配置组': []
         }
@@ -52,6 +54,45 @@ class LogDataManager:
         # 今天的日期字符串，用于排除今天的数据存储
         self.today_str = date.today().strftime('%Y%m%d')
     
+    def _extract_log_entries(self, log_content: str) -> List[Tuple[str, str, str, str]]:
+        """
+        兼容解析日志行：
+        - 新格式: [时间] [级别] [类名] 消息
+        - 旧格式: [时间] [级别] [类名]\\n消息
+        """
+        parsed_matches: List[Tuple[str, str, str, str]] = []
+        lines = log_content.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip('\r')
+            new_line_match = NEW_LINE_PATTERN.match(line)
+            if new_line_match:
+                parsed_matches.append(new_line_match.groups())
+                i += 1
+                continue
+
+            header_match = LEGACY_HEADER_PATTERN.match(line)
+            if not header_match:
+                i += 1
+                continue
+
+            details = ''
+            if i + 1 < len(lines):
+                next_line = lines[i + 1]
+                if not next_line.startswith('['):
+                    details = next_line
+                    i += 1
+
+            parsed_matches.append((
+                header_match.group(1),
+                header_match.group(2),
+                header_match.group(3),
+                details
+            ))
+            i += 1
+
+        return parsed_matches
+
     def parse_log(self, log_content: str, date_str: str) -> LogAnalysisResult:
         """
         解析日志内容，提取日志类型、交互物品等信息，并统计相关信息。
@@ -64,16 +105,12 @@ class LogDataManager:
         Returns:
             LogAnalysisResult: 包含解析结果的分析结果对象
         """
-        matches = LOG_PATTERN.findall(log_content)
-        first_line_match = FIRST_LINE_PATTERN.match(log_content)
-        if first_line_match:
-            matches = [first_line_match.groups()] + matches
+        matches = self._extract_log_entries(log_content)
 
         item_count = {}
         items = []
-
-        # 使用时间段列表管理所有活动时间段
-        time_segments = []  # 存储所有时间段 [(start, end), ...]
+        # 使用累计值管理活动时长，避免为超大日志构建时间段列表
+        total_duration = 0
         current_start = None
         last_time = None
         current_task = None  # 当前运行的配置组
@@ -106,12 +143,15 @@ class LogDataManager:
                 
             # 提取拾取内容
             if '交互或拾取' in details:
-                item_name = details.split('：')[1].strip('"')
+                _, sep, item_part = details.partition('：')
+                if not sep:
+                    continue
+                item_name = item_part.strip('"')
                 item_count[item_name] = item_count.get(item_name, 0) + 1
 
                 # 检查是否存在匹配的行
                 cache_key = f'{item_name}{timestamp}{date_str}{current_task}'
-                if cache_key not in self.item_cached_list:
+                if cache_key not in self.item_cached_set:
                     item_info = ItemInfo(
                         name=item_name,
                         timestamp=timestamp,
@@ -119,7 +159,7 @@ class LogDataManager:
                         config_group=str(current_task) if current_task else None
                     )
                     items.append(item_info)
-                    self.item_cached_list.append(cache_key)
+                    self.item_cached_set.add(cache_key)
 
             # 处理时间段
             if last_time is None:
@@ -128,21 +168,18 @@ class LogDataManager:
             elif current_time - last_time > 300:
                 # 间隔过大（超过5分钟），结束当前段
                 if current_start is not None:
-                    time_segments.append((current_start, last_time))
+                    total_duration += int(last_time - current_start)
                 current_start = current_time
             
             last_time = current_time
 
         # 处理最后一段
         if current_start is not None and last_time is not None:
-            time_segments.append((current_start, last_time))
-
-        # 计算总持续时间
-        duration = sum(int(end - start) for start, end in time_segments)
+            total_duration += int(last_time - current_start)
 
         return LogAnalysisResult(
             item_count=item_count,
-            duration=duration,
+            duration=total_duration,
             items=items
         )
 
@@ -229,7 +266,7 @@ class LogDataManager:
             tuple: (duration, items) 今天的持续时间和物品列表，如果没有数据则返回(0, [])
         """
         # 清空缓存，因为需要重新读取今天的数据
-        self.item_cached_list = []
+        self.item_cached_set.clear()
         
         today_file_path = os.path.join(self.log_dir, f"better-genshin-impact{self.today_str}.log")
         
@@ -291,12 +328,17 @@ class LogDataManager:
             # 将今天的数据添加到字典中
             date_duration_dict[self.today_str] = today_duration
             
-            # 添加今天的物品数据（插入到最前面）
-            for item in today_items:
-                unified_item_data['物品名称'].insert(0, item.name)
-                unified_item_data['时间'].insert(0, item.timestamp)
-                unified_item_data['日期'].insert(0, item.date)
-                unified_item_data['归属配置组'].insert(0, item.config_group or '')
+            # 添加今天的物品数据（拼接到最前面，避免多次 insert(0) 导致 O(n^2)）
+            reversed_today_items = list(reversed(today_items))
+            today_names = [item.name for item in reversed_today_items]
+            today_times = [item.timestamp for item in reversed_today_items]
+            today_dates = [item.date for item in reversed_today_items]
+            today_groups = [(item.config_group or '') for item in reversed_today_items]
+
+            unified_item_data['物品名称'] = today_names + unified_item_data['物品名称']
+            unified_item_data['时间'] = today_times + unified_item_data['时间']
+            unified_item_data['日期'] = today_dates + unified_item_data['日期']
+            unified_item_data['归属配置组'] = today_groups + unified_item_data['归属配置组']
 
         # 按日期降序排列（最新的日期在前面）
         sorted_dates = sorted(date_duration_dict.keys(), reverse=True)
@@ -345,4 +387,3 @@ class LogDataManager:
         # 无视之前数据，强制刷新今天数据
         self.get_log_list()
         return self.item_datadict
-
