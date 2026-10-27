@@ -10,7 +10,6 @@ import {
   Globe, 
   User, 
   Scale, 
-  Heart,
   CheckCircle,
   Settings,
   Database,
@@ -182,43 +181,6 @@ export default function AboutPage() {
                     <h3 className="font-semibold mb-1">许可证</h3>
                     <p className="text-sm text-muted-foreground">
                       本项目遵循Apache-2.0 License许可证
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 捐赠信息 */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          <Card className="mb-8">
-            <CardContent className="p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Heart className="w-6 h-6 text-red-500" />
-                <h2 className="text-2xl font-bold">捐赠支持</h2>
-              </div>
-              <div className="text-center space-y-4">
-                <p className="text-base leading-relaxed">
-                  项目开发不易，所有工作均为开发者Because66666独立开发。
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  如果这个工具对您有帮助，欢迎通过以下方式支持项目发展：
-                </p>
-                <div className="flex justify-center">
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <img
-                      src="/donate.jpg"
-                      alt="捐赠二维码"
-                      className="w-48 h-48 object-contain rounded-md"
-                      loading="lazy"
-                    />
-                    <p className="text-sm text-muted-foreground mt-2">
-                      扫描二维码进行捐赠
                     </p>
                   </div>
                 </div>
